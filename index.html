@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>SAVER-VLA: Agentic Robotics for Failure-Aware Autonomous Manipulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --ink: #1c2128;
+  --muted: #59636e;
+  --rule: #d9dee3;
+  --panel: #f5f7f9;
+  --blue: #1d5fa8;
+  --blue-soft: #e7eef8;
+  --orange: #b4500f;
+  --orange-soft: #fbeee4;
+  --green: #1a7f37;
+  --seg-policy: #b3bcc6;
+  --serif: "Source Serif 4", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --sans: "Source Sans 3", "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+  --mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+}
+img, video, svg { max-width: 100%; }
+a { color: var(--blue); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible, video:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.wrap { max-width: 1040px; margin-left: auto; margin-right: auto; padding-left: 1.25rem; padding-right: 1.25rem; }
+.prose { max-width: 44rem; margin-left: auto; margin-right: auto; }
+
+/* Title block */
+header.title {
+  text-align: center;
+  padding: 4rem 0 2.25rem;
+}
+header.title h1 {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: clamp(2.1rem, 5vw, 3.1rem);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+header.title .subtitle {
+  font-family: var(--serif);
+  font-size: clamp(1.15rem, 2.4vw, 1.45rem);
+  line-height: 1.35;
+  margin: 0.6rem auto 0;
+  max-width: 40rem;
+  color: var(--ink);
+}
+.authors { margin: 1.6rem 0 0.2rem; font-family: var(--sans); font-size: 1.1rem; }
+.affil { margin: 0; font-family: var(--sans); color: var(--muted); font-size: 0.98rem; }
+.links { margin-top: 1.5rem; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.6rem; }
+.btn {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  font-family: var(--sans); font-weight: 600; font-size: 0.95rem;
+  padding: 0.55rem 1.05rem; min-height: 44px;
+  border-radius: 999px; border: 1px solid var(--ink);
+  color: var(--ink); background: var(--bg); text-decoration: none;
+}
+.btn:hover { background: var(--panel); }
+.btn[aria-disabled="true"] { color: var(--muted); border-color: var(--rule); cursor: default; }
+.btn[aria-disabled="true"]:hover { background: var(--bg); }
+.btn small { font-weight: 400; font-size: 0.82rem; }
+
+/* Sections */
+section { padding: 2.75rem 0; border-top: 1px solid var(--rule); }
+section:first-of-type { border-top: 0; }
+h2 {
+  font-family: var(--sans); font-weight: 700;
+  font-size: 1.6rem; line-height: 1.25; margin: 0 0 1rem;
+  text-align: center;
+}
+h3 { font-family: var(--sans); font-weight: 600; font-size: 1.18rem; line-height: 1.3; margin: 2rem 0 0.5rem; }
+p { margin: 0 0 1rem; }
+code, .tok { font-family: var(--mono); font-size: 0.86em; }
+.tok { background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; padding: 0.05em 0.35em; white-space: nowrap; }
+figcaption, .caption { font-family: var(--sans); font-size: 0.95rem; line-height: 1.5; color: var(--muted); margin-top: 0.75rem; }
+figcaption strong, .caption strong { color: var(--ink); }
+figure { margin: 0; }
+
+/* Teaser */
+.teaser { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 0.5rem; }
+.teaser figure video { width: 100%; aspect-ratio: 1; display: block; border-radius: 6px; background: var(--panel); }
+.teaser .lab { font-family: var(--sans); font-size: 0.98rem; margin-top: 0.5rem; display: flex; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+.teaser .lab b { font-weight: 600; }
+.teaser-cap { max-width: 44rem; margin: 1rem auto 0; text-align: center; }
+
+/* Outcome marks */
+.ok, .bad, .part, .na { font-family: var(--sans); font-weight: 600; white-space: nowrap; }
+.ok { color: var(--green); }
+.bad { color: var(--orange); }
+.part { color: var(--blue); }
+.na { color: var(--muted); font-weight: 400; }
+
+/* Trace player */
+.trace { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 1.5rem; margin-top: 1.5rem; align-items: start; }
+.player video { width: 100%; aspect-ratio: 1; display: block; border-radius: 6px; background: var(--panel); }
+.readout { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; font-family: var(--sans); font-size: 0.95rem; }
+.readout .now { font-variant-numeric: tabular-nums; }
+.ctrls { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.ctrls button {
+  font-family: var(--sans); font-size: 0.9rem; min-height: 40px; min-width: 44px;
+  padding: 0.3rem 0.75rem; border-radius: 6px; border: 1px solid var(--rule);
+  background: var(--bg); color: var(--ink); cursor: pointer;
+}
+.ctrls button[aria-pressed="true"] { border-color: var(--ink); background: var(--panel); font-weight: 600; }
+.track {
+  position: relative; height: 30px; margin-top: 0.75rem;
+  background: var(--panel); border-radius: 4px; cursor: pointer; overflow: hidden;
+}
+.seg { position: absolute; top: 0; bottom: 0; border-right: 1px solid var(--bg); }
+.seg.policy { background: var(--seg-policy); }
+.seg.trial { background: repeating-linear-gradient(135deg, var(--seg-policy) 0 5px, #cfd5dc 5px 10px); }
+.seg.skill { background: var(--blue); }
+.seg.fault { background: var(--orange); }
+.playhead { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); left: 0; pointer-events: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1.1rem; margin-top: 0.6rem; font-family: var(--sans); font-size: 0.88rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+.legend i { width: 14px; height: 10px; border-radius: 2px; display: inline-block; }
+
+.decisions { list-style: none; margin: 0; padding: 0; max-height: 640px; overflow-y: auto; border: 1px solid var(--rule); border-radius: 6px; position: relative; }
+.decisions li { border-top: 1px solid var(--rule); }
+.decisions li:first-child { border-top: 0; }
+.decisions button {
+  all: unset; box-sizing: border-box; display: block; width: 100%;
+  padding: 0.8rem 1rem; cursor: pointer; font-family: var(--sans);
+}
+.decisions button:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.decisions button:hover { background: #fafbfc; }
+.decisions li.active button { background: var(--blue-soft); }
+.event.fault .d-skill { color: var(--orange); }
+.decisions li.event button { cursor: pointer; }
+.d-head { display: flex; justify-content: space-between; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; }
+.d-step { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.d-skill { font-family: var(--mono); font-size: 0.9rem; font-weight: 500; color: var(--blue); }
+.event .d-skill { color: var(--ink); font-family: var(--sans); font-weight: 600; font-size: 0.95rem; }
+.d-state { font-size: 0.86rem; color: var(--muted); margin-top: 0.15rem; }
+.d-reason { font-family: var(--serif); font-size: 0.95rem; line-height: 1.5; margin-top: 0.4rem; color: var(--ink); display: none; }
+.decisions li.active .d-reason { display: block; }
+.d-out { font-size: 0.88rem; margin-top: 0.3rem; }
+
+/* Architecture */
+.arch { margin: 1.5rem auto 0; max-width: 980px; }
+.arch-scroll { overflow-x: auto; }
+.arch svg { min-width: 700px; width: 100%; height: auto; display: block; }
+.arch svg text { font-family: var(--sans); }
+
+/* Tables */
+.tbl-scroll { overflow-x: auto; margin-top: 1.25rem; margin-bottom: 1.25rem; }
+table { border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 0.95rem; line-height: 1.45; }
+th, td { text-align: left; vertical-align: top; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--rule); }
+thead th { border-bottom: 1.5px solid var(--ink); font-weight: 600; }
+tbody th { font-weight: 600; }
+td .tok { font-size: 0.82rem; }
+td:last-child { white-space: nowrap; }
+
+/* Experiment gallery */
+.phase-h { font-family: var(--sans); font-weight: 600; font-size: 1.2rem; margin: 2.5rem 0 1rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--rule); }
+.phase-h span { color: var(--muted); font-weight: 400; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 2rem 1.5rem; }
+.gallery.four { grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); }
+.exp video { width: 100%; aspect-ratio: 1; display: block; border-radius: 6px; background: var(--panel); }
+.exp h4 { font-family: var(--sans); font-weight: 600; font-size: 1.05rem; margin: 0.7rem 0 0.25rem; line-height: 1.3; }
+.exp p { font-family: var(--sans); font-size: 0.93rem; line-height: 1.5; color: var(--muted); margin: 0 0 0.6rem; }
+.exp dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.75rem; font-family: var(--sans); font-size: 0.9rem; }
+.exp dt { color: var(--muted); }
+.exp dd { margin: 0; }
+
+/* Side-by-side compare */
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.25rem; }
+.pair video { width: 100%; aspect-ratio: 1; display: block; border-radius: 6px; background: var(--panel); }
+.pair h4 { font-family: var(--sans); font-weight: 600; font-size: 1.05rem; margin: 0.75rem 0 0.4rem; }
+.seq { font-family: var(--sans); font-size: 0.9rem; margin: 0; padding-left: 1.3rem; }
+.seq li { margin: 0.15rem 0; }
+.seq .tok { font-size: 0.8rem; }
+blockquote { margin: 0.75rem 0 0; padding: 0.6rem 0.9rem; border-left: 3px solid var(--rule); font-size: 0.96rem; line-height: 1.55; background: var(--panel); border-radius: 0 6px 6px 0; }
+
+/* Findings */
+.findings h3 { margin-top: 1.75rem; }
+
+pre.bib {
+  font-family: var(--mono); font-size: 0.85rem; line-height: 1.55;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 6px;
+  padding: 1rem 1.1rem; overflow-x: auto; margin: 0;
+}
+.bib-wrap { position: relative; }
+.copy { position: absolute; top: 0.5rem; right: 0.5rem; }
+footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; font-family: var(--sans); font-size: 0.9rem; color: var(--muted); text-align: center; }
+
+@media (max-width: 820px) {
+  .trace { grid-template-columns: 1fr; }
+  .decisions { max-height: 480px; }
+}
+@media (max-width: 640px) {
+  header.title { padding-top: 2.75rem; }
+  .teaser { grid-template-columns: 1fr; max-width: 360px; margin-left: auto; margin-right: auto; }
+  .pair { grid-template-columns: 1fr; }
+  section { padding: 2.25rem 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="title wrap">
+  <h1>SAVER-VLA</h1>
+  <p class="subtitle">Agentic Robotics for Failure-Aware Autonomous Manipulation</p>
+  <p class="authors">Mehdi Omidghane<sup>1</sup>&ensp;&ensp;Nikki Salami<sup>2</sup></p>
+  <p class="affil"><sup>1</sup>University of Alberta&ensp;&ensp;<sup>2</sup>Dartmouth College</p>
+  <div class="links">
+    <span class="btn" aria-disabled="true">Paper <small>coming soon</small></span>
+    <span class="btn" aria-disabled="true">Code <small>coming soon</small></span>
+    <a class="btn" href="#experiments">Experiment videos</a>
+  </div>
+</header>
+
+<main>
+
+<section class="wrap" aria-labelledby="teaser-h">
+  <h2 id="teaser-h" class="visually-hidden" style="position:absolute;left:-9999px">Teaser</h2>
+  <div class="teaser">
+    <figure>
+      <video src="videos/p3-no-recovery.mp4" poster="videos/p3-no-recovery.jpg" muted loop playsinline preload="none" data-auto aria-label="SmolVLA alone after the soup can is displaced"></video>
+      <div class="lab"><b>SmolVLA alone</b><span class="bad">✗ Task failed</span></div>
+    </figure>
+    <figure>
+      <video src="videos/p3-queue-reset.mp4" poster="videos/p3-queue-reset.jpg" muted loop playsinline preload="none" data-auto aria-label="SmolVLA with action-queue reset after failure detection"></video>
+      <div class="lab"><b>Detect + reset policy</b><span class="bad">✗ Task failed</span></div>
+    </figure>
+    <figure>
+      <video src="videos/p5-agentic-500.mp4" poster="videos/p5-agentic-500.jpg" muted loop playsinline preload="none" data-auto aria-label="Agent-supervised recovery after the soup can is displaced"></video>
+      <div class="lab"><b>Agentic SAVER</b><span class="ok">✓ Task completed</span></div>
+    </figure>
+  </div>
+  <p class="caption teaser-cap">The same injected failure in LIBERO: at step 67 the soup can is pulled out of the gripper during transport. SmolVLA alone does not recover, and restarting its inference after detection is not enough either. With SAVER, a language-model agent selects recovery skills, then hands control back to SmolVLA, which regrasps the can and places it in the basket. Videos play at half the recorded speed.</p>
+</section>
+
+<section class="wrap" aria-labelledby="abstract-h">
+  <h2 id="abstract-h">Abstract</h2>
+  <div class="prose">
+    <p>Vision-language-action (VLA) policies map camera images and a language instruction directly to robot actions. When a grasp slips or an object falls, they usually continue as if nothing happened. SAVER-VLA adds a supervisory layer around a pretrained policy, SmolVLA, instead of retraining it. A verifier monitors the manipulation as it runs and raises an event when the observed state diverges from what the task expects, for example when the object stops moving with the gripper.</p>
+    <p>Only at that moment does a language-model agent take part. It receives a structured description of the failure, the robot and object geometry, the outcomes of earlier recovery attempts, and the list of skills that are currently executable. It chooses one bounded skill, such as moving to a pregrasp pose, adjusting the grasp offset or handing control back to the policy for a supervised grasp trial. A coordinator validates and executes that choice, verifies the result and returns it to the agent for the next decision.</p>
+    <p>In controlled fault-injection experiments in LIBERO simulation, this loop recovers from forced object displacement and forced gripper release, replans after an unverified grasp attempt, and, in its most recent version, changes the grasp geometry when the evidence points to a misaligned approach rather than a gripper fault. The experiments also show where agentic recovery breaks down: when the agent’s reasoning is sound but its skill library cannot produce the needed physical correction, or when the coordinator silently overrides its decisions. All results are individual simulation episodes with privileged state, intended to establish feasibility and failure modes rather than statistical performance.</p>
+  </div>
+</section>
+
+<section class="wrap" aria-labelledby="trace-h">
+  <h2 id="trace-h">One recovery, decision by decision</h2>
+  <div class="prose">
+    <p>The episode below is the hardest scenario we have run. The gripper is forced open during transport, the cause of the fault is hidden from the agent, and the approach skill carries a 5.5&nbsp;cm calibration error along X. The agent (GPT-5.5) makes eight decisions over 740 simulation steps. Select any decision to jump to it in the video, or play the episode and follow along.</p>
+  </div>
+
+  <div class="trace">
+    <div class="player">
+      <video id="tv" src="videos/p6-5-1.mp4" poster="videos/p6-5-1.jpg" muted playsinline preload="auto" controls aria-label="Phase 6.5.1 episode: gripper release with geometry disturbance"></video>
+      <div class="readout">
+        <span class="now" id="now" aria-live="off">Step 0 of 817</span>
+        <div class="ctrls" role="group" aria-label="Playback speed">
+          <button type="button" data-rate="0.5" aria-pressed="false">Slow</button>
+          <button type="button" data-rate="1" aria-pressed="true">Normal</button>
+          <button type="button" data-rate="2" aria-pressed="false">Fast</button>
+        </div>
+      </div>
+      <div class="track" id="track" role="slider" tabindex="0" aria-label="Episode timeline" aria-valuemin="0" aria-valuemax="817" aria-valuenow="0"></div>
+      <div class="legend">
+        <span><i style="background:var(--seg-policy)"></i>SmolVLA in control</span>
+        <span><i style="background:repeating-linear-gradient(135deg,var(--seg-policy) 0 3px,#cfd5dc 3px 6px)"></i>Supervised grasp trial</span>
+        <span><i style="background:var(--blue)"></i>Agent-selected skill</span>
+        <span><i style="background:var(--orange)"></i>Injected fault</span>
+      </div>
+    </div>
+    <ol class="decisions" id="decisions" aria-label="Agent decisions"></ol>
+  </div>
+
+  <div class="prose" style="margin-top:1.75rem">
+    <p>The decisive moment is step 672. The agent is in the same near-grasp pose as at step 200, with the same 5.9&nbsp;cm offset. At step 200 it handed control to the policy because there was not yet any evidence against the standard grasp. By step 672 that evidence exists: the first trial failed with no gripper-command mismatch, so a fault in the gripper does not explain it. The agent applies a negative-X offset, which reduces the offset to 1.3&nbsp;cm, and the second policy trial is verified within 19 steps.</p>
+  </div>
+</section>
+
+<section class="wrap" aria-labelledby="method-h">
+  <h2 id="method-h">Method</h2>
+  <div class="prose">
+    <p>SAVER-VLA separates two questions that a single policy normally answers together. SmolVLA decides <em>how the robot should move</em> at 20&nbsp;Hz. The agent decides <em>what the robot should do next</em> after something has gone wrong, and it is consulted only at recovery boundaries, typically three to nine times per episode. It never produces motor commands.</p>
+  </div>
+
+  <figure class="arch">
+    <div class="arch-scroll">
+    <svg viewBox="0 0 960 445" role="img" aria-label="SAVER-VLA architecture. Top: continuous control loop in which SmolVLA sends actions to the LIBERO robot and the SAVER verifier monitors state. Bottom: event-triggered recovery loop in which the verifier sends failure events to the recovery coordinator, which exchanges observations and decisions with the language-model agent, sends validated skills to the bounded skill executor, and resumes SmolVLA for supervised grasp trials.">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1c2128"/></marker>
+        <marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d5fa8"/></marker>
+        <marker id="aho" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b4500f"/></marker>
+      </defs>
+      <text x="40" y="34" font-size="14" fill="#59636e">Continuous control loop, every step (20 Hz)</text>
+
+      <rect x="40" y="52" width="210" height="80" rx="8" fill="#f5f7f9" stroke="#1c2128"/>
+      <text x="145" y="86" text-anchor="middle" font-size="17" font-weight="600" fill="#1c2128">SmolVLA</text>
+      <text x="145" y="108" text-anchor="middle" font-size="13" fill="#59636e">pretrained VLA policy</text>
+
+      <rect x="375" y="52" width="210" height="80" rx="8" fill="#f5f7f9" stroke="#1c2128"/>
+      <text x="480" y="86" text-anchor="middle" font-size="17" font-weight="600" fill="#1c2128">LIBERO + Panda</text>
+      <text x="480" y="108" text-anchor="middle" font-size="13" fill="#59636e">simulated robot and scene</text>
+
+      <rect x="710" y="52" width="210" height="80" rx="8" fill="#f5f7f9" stroke="#1c2128"/>
+      <text x="815" y="86" text-anchor="middle" font-size="17" font-weight="600" fill="#1c2128">SAVER verifier</text>
+      <text x="815" y="108" text-anchor="middle" font-size="13" fill="#59636e">grasp and transport checks</text>
+
+      <line x1="250" y1="80" x2="372" y2="80" stroke="#1c2128" stroke-width="1.5" marker-end="url(#ah)"/>
+      <text x="311" y="72" text-anchor="middle" font-size="12" fill="#59636e">7-D action</text>
+      <line x1="372" y1="106" x2="253" y2="106" stroke="#1c2128" stroke-width="1.5" marker-end="url(#ah)"/>
+      <text x="311" y="124" text-anchor="middle" font-size="12" fill="#59636e">image + state</text>
+      <line x1="585" y1="92" x2="707" y2="92" stroke="#1c2128" stroke-width="1.5" marker-end="url(#ah)"/>
+      <text x="646" y="84" text-anchor="middle" font-size="12" fill="#59636e">sim state</text>
+
+      <path d="M815,132 V170 H530 V297" fill="none" stroke="#b4500f" stroke-width="1.6" marker-end="url(#aho)"/>
+      <text x="672" y="162" text-anchor="middle" font-size="12" fill="#b4500f">failure event</text>
+
+      <path d="M145,300 V205 H440 V135" fill="none" stroke="#1d5fa8" stroke-width="1.5" marker-end="url(#ahb)"/>
+      <text x="300" y="197" text-anchor="middle" font-size="12" fill="#1d5fa8">skill overrides policy actions</text>
+
+      <path d="M470,300 V250 H210 V135" fill="none" stroke="#1d5fa8" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ahb)"/>
+      <text x="345" y="242" text-anchor="middle" font-size="12" fill="#1d5fa8">RESUME_POLICY: supervised grasp trial</text>
+
+      <rect x="40" y="300" width="210" height="96" rx="8" fill="#e7eef8" stroke="#1d5fa8"/>
+      <text x="145" y="336" text-anchor="middle" font-size="17" font-weight="600" fill="#1c2128">Skill executor</text>
+      <text x="145" y="358" text-anchor="middle" font-size="13" fill="#59636e">bounded Cartesian skills,</text>
+      <text x="145" y="375" text-anchor="middle" font-size="13" fill="#59636e">timeouts, REACHED / FAILED</text>
+
+      <rect x="375" y="300" width="210" height="96" rx="8" fill="#e7eef8" stroke="#1d5fa8"/>
+      <text x="480" y="336" text-anchor="middle" font-size="17" font-weight="600" fill="#1c2128">Recovery coordinator</text>
+      <text x="480" y="358" text-anchor="middle" font-size="13" fill="#59636e">capability check, budgets,</text>
+      <text x="480" y="375" text-anchor="middle" font-size="13" fill="#59636e">grasp-trial verification</text>
+
+      <rect x="710" y="300" width="210" height="96" rx="8" fill="#ffffff" stroke="#1d5fa8" stroke-width="2"/>
+      <text x="815" y="336" text-anchor="middle" font-size="17" font-weight="600" fill="#1d5fa8">LLM recovery agent</text>
+      <text x="815" y="358" text-anchor="middle" font-size="13" fill="#59636e">GPT-5.2 / GPT-5.5,</text>
+      <text x="815" y="375" text-anchor="middle" font-size="13" fill="#59636e">structured JSON decisions</text>
+
+      <line x1="585" y1="330" x2="707" y2="330" stroke="#1d5fa8" stroke-width="1.5" marker-end="url(#ahb)"/>
+      <text x="646" y="308" text-anchor="middle" font-size="12" fill="#1d5fa8">observation,</text>
+      <text x="646" y="322" text-anchor="middle" font-size="12" fill="#1d5fa8">available skills</text>
+      <line x1="707" y1="368" x2="588" y2="368" stroke="#1d5fa8" stroke-width="1.5" marker-end="url(#ahb)"/>
+      <text x="646" y="388" text-anchor="middle" font-size="12" fill="#1d5fa8">skill + reason</text>
+
+      <line x1="375" y1="330" x2="253" y2="330" stroke="#1d5fa8" stroke-width="1.5" marker-end="url(#ahb)"/>
+      <text x="314" y="322" text-anchor="middle" font-size="12" fill="#1d5fa8">validated skill</text>
+      <line x1="250" y1="368" x2="372" y2="368" stroke="#1d5fa8" stroke-width="1.5" marker-end="url(#ahb)"/>
+      <text x="311" y="388" text-anchor="middle" font-size="12" fill="#1d5fa8">skill outcome</text>
+
+      <text x="40" y="432" font-size="14" fill="#59636e">Event-triggered recovery loop, only after a failure</text>
+    </svg>
+    </div>
+    <figcaption><strong>Figure 1.</strong> Two loops at two time scales. The verifier runs on every step; the agent is called only when the verifier reports a failure, and again after each skill or grasp trial finishes. The coordinator, not the agent, holds the attempt budgets and decides which skills are executable, and it reports both the requested and the executed skill so the two can never be confused in the logs.</figcaption>
+  </figure>
+
+  <div class="prose">
+    <h3>What the agent sees and returns</h3>
+    <p>At each decision the coordinator sends a JSON observation: the grasp state (for example <code>GRASP_LOST</code>), the end-effector–object distance and XY offset, the last skill and its result, the outcome of any supervised grasp trial, the measured mismatch between requested and executed gripper commands, attempt counts, and two lists: <code>available_actions</code> and <code>unavailable_actions</code> with the reason each one is blocked. From Phase 6.4 on, the name of the injected fault is withheld. The agent answers through a strict JSON schema with a skill, a variant, its reason, and the outcome it expects.</p>
+
+    <h3>Skill library</h3>
+  </div>
+  <div class="prose tbl-scroll">
+    <table>
+      <thead><tr><th scope="col">Skill</th><th scope="col">What it does</th><th scope="col">Added</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tok">MOVE_TO_PREGRASP</span></td><td>Waits for the object to settle, raises to clearance height and stops above it.</td><td>Phase 3.4</td></tr>
+        <tr><td><span class="tok">APPROACH_OBJECT</span></td><td>Descends to a near-grasp pose derived from a successful demonstration grasp. Does not close the gripper.</td><td>Phase 3.6</td></tr>
+        <tr><td><span class="tok">RESUME_POLICY</span></td><td>Returns control to SmolVLA. From Phase 6.3 this is a bounded trial that ends <code>VERIFIED</code> or <code>NOT_VERIFIED</code>.</td><td>Phase 4.2</td></tr>
+        <tr><td><span class="tok">REASSESS_STATE</span></td><td>Holds still for a few steps and refreshes the object, gripper and grasp measurements.</td><td>Phase 6.2</td></tr>
+        <tr><td><span class="tok">ADJUST_GRASP_POSE</span></td><td>Moves to an alternative near-grasp pose offset in +X or −X.</td><td>Phase 6.2</td></tr>
+        <tr><td><span class="tok">REPOSITION_TO_OBJECT_2D</span></td><td>Raises, corrects X and Y together, and (from 6.5.1) lowers to pregrasp height.</td><td>Phase 6.5</td></tr>
+        <tr><td><span class="tok">ABORT_RECOVERY</span></td><td>Ends the intervention when no feasible recovery remains.</td><td>Phase 4.2</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>Every skill acts on live simulator state, issues bounded relative commands through the Panda’s operational-space controller (at most 5&nbsp;cm per step), and has its own timeout and attempt budget. A skill reporting <code>REACHED</code> means only that it reached its target pose. It does not mean the object was grasped, a distinction the first agents got wrong.</p>
+  </div>
+</section>
+
+<section class="wrap" aria-labelledby="compare-h">
+  <h2 id="compare-h">Reasoning quality matters: the same state, two models</h2>
+  <div class="prose">
+    <p>In Phase 6.2 we gave the agent two new skills, reassessment and grasp-offset adjustment, and ran GPT-5.2 and GPT-5.5 on the same gripper-release episode. Both reached the near-grasp pose at step 186 with the can on the table, about 8&nbsp;cm from the gripper, and no grasp attempted yet.</p>
+  </div>
+  <div class="pair">
+    <figure>
+      <video src="videos/p6-2-gpt52.mp4" poster="videos/p6-2-gpt52.jpg" muted loop playsinline preload="none" controls data-auto aria-label="Phase 6.2 GPT-5.2 episode"></video>
+      <h4>GPT-5.2: nine decisions, budget exhausted</h4>
+      <ol class="seq">
+        <li>80 <span class="tok">MOVE_TO_PREGRASP</span></li>
+        <li>127 <span class="tok">APPROACH_OBJECT</span></li>
+        <li>186 <span class="tok">REASSESS_STATE</span></li>
+        <li>190 <span class="tok">MOVE_TO_PREGRASP</span> (repeat)</li>
+        <li>271 <span class="tok">APPROACH_OBJECT</span> (repeat)</li>
+        <li>330 <span class="tok">ADJUST_GRASP_POSE</span> −X</li>
+        <li>351 <span class="tok">REASSESS_STATE</span></li>
+        <li>355 <span class="tok">ADJUST_GRASP_POSE</span> +X</li>
+        <li>389 <span class="tok">ABORT_RECOVERY</span> (decision budget)</li>
+      </ol>
+    </figure>
+    <figure>
+      <video src="videos/p6-1-gripper-release.mp4" poster="videos/p6-1-gripper-release.jpg" muted loop playsinline preload="none" controls data-auto aria-label="Phase 6.2 GPT-5.5 episode"></video>
+      <h4>GPT-5.5: three decisions, timely handoff</h4>
+      <ol class="seq">
+        <li>80 <span class="tok">MOVE_TO_PREGRASP</span></li>
+        <li>127 <span class="tok">APPROACH_OBJECT</span></li>
+        <li>186 <span class="tok">RESUME_POLICY</span></li>
+      </ol>
+      <blockquote>“Repeating the same approach would be unproductive; hand control back to the policy to execute the grasp behavior from this near-grasp state.” <br><span class="caption" style="margin:0">GPT-5.5 at step 186</span></blockquote>
+    </figure>
+  </div>
+  <div class="prose" style="margin-top:1.25rem">
+    <p>GPT-5.2 read “no verified grasp yet” as evidence that the approach had failed. GPT-5.5 distinguished preparing for a grasp from attempting one. Both episodes ended with LIBERO success, but for GPT-5.2 that came only after it aborted and SmolVLA continued on its own, so we do not count it as an agent-supervised recovery. This is one episode per model. GPT-5.2’s first three decisions in Phase 6.1 matched GPT-5.5’s and produced the same trajectory shown on the right.</p>
+  </div>
+</section>
+
+<section class="wrap" aria-labelledby="contrast-h">
+  <h2 id="contrast-h">Same symptom, different evidence, different strategy</h2>
+  <div class="prose">
+    <p>A fixed recovery script responds to a failed grasp the same way every time. The question we care most about is whether the agent can tell different causes apart from what it can observe. Phases 6.4a and 6.5.1 put GPT-5.5 in two episodes where the first supervised grasp trial fails, with the fault name hidden in both.</p>
+  </div>
+  <div class="prose tbl-scroll">
+    <table>
+      <thead><tr><th scope="col"></th><th scope="col">Phase 6.4a: gripper impairment</th><th scope="col">Phase 6.5.1: approach miscalibrated</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Hidden cause</th><td>Gripper forced open during trial 1</td><td>Approach target biased 5.5&nbsp;cm in +X</td></tr>
+        <tr><th scope="row">Trial 1 result</th><td><code>NOT_VERIFIED</code></td><td><code>NOT_VERIFIED</code></td></tr>
+        <tr><th scope="row">Gripper-command mismatch</th><td>40 steps</td><td>0 steps</td></tr>
+        <tr><th scope="row">Agent’s geometric choice</th><td>Keep the centered grasp; reassess, reposition, retry</td><td>Apply <span class="tok">ADJUST_GRASP_POSE</span> −X before retrying</td></tr>
+        <tr><th scope="row">Trial 2 result</th><td><span class="ok">✓ VERIFIED</span></td><td><span class="ok">✓ VERIFIED</span></td></tr>
+        <tr><th scope="row">LIBERO task</th><td><span class="ok">✓ Success</span></td><td><span class="ok">✓ Success</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>In both cases the agent’s choice matches the evidence it was given. This is the first sign of the adaptive behavior the project is aiming for. It is still preliminary. There is one episode per condition, and a hand-written rule with access to the same mismatch count could make the same choices. Establishing an advantage over such a rule is the next experiment.</p>
+  </div>
+</section>
+
+<section class="wrap" id="experiments" aria-labelledby="exp-h">
+  <h2 id="exp-h">All experiments</h2>
+  <div class="prose">
+    <p>Every recording is LIBERO-Object task 0, “pick up the alphabet soup and place it in the basket,” with an injected fault. For each run we report three outcomes separately, because they often disagree: whether the <strong>agent’s decisions</strong> fit the situation, whether the <strong>recovery skills</strong> reached their targets, and whether LIBERO counted the <strong>task</strong> as completed.</p>
+  </div>
+
+  <h3 class="phase-h">Phase 3 <span>Baselines and the first recovery skills, no agent</span></h3>
+  <div class="gallery four">
+    <article class="exp">
+      <video src="videos/p3-no-recovery.mp4" poster="videos/p3-no-recovery.jpg" muted loop playsinline preload="none" controls aria-label="SmolVLA alone after forced separation"></video>
+      <h4>SmolVLA without recovery</h4>
+      <p>The can is displaced from the gripper at step 67. The policy keeps executing its queued actions and never returns to the can.</p>
+      <dl><dt>Agent</dt><dd class="na">none</dd><dt>Skills</dt><dd class="na">none</dd><dt>Task</dt><dd class="bad">✗ Failed</dd></dl>
+    </article>
+    <article class="exp">
+      <video src="videos/p3-queue-reset.mp4" poster="videos/p3-queue-reset.jpg" muted loop playsinline preload="none" controls aria-label="Queue reset baseline"></video>
+      <h4>Detect, then reset the policy</h4>
+      <p>The verifier detects the separation at step 70 and SmolVLA’s action queue is cleared to force fresh inference. The arm approaches briefly, then drifts away. The can settles about 62&nbsp;cm from the basket.</p>
+      <dl><dt>Agent</dt><dd class="na">none</dd><dt>Skills</dt><dd class="na">none</dd><dt>Task</dt><dd class="bad">✗ Failed</dd></dl>
+    </article>
+    <article class="exp">
+      <video src="videos/p3-pregrasp-hold.mp4" poster="videos/p3-pregrasp-hold.jpg" muted loop playsinline preload="none" controls aria-label="Live pregrasp and hold"></video>
+      <h4>Scripted pregrasp and hold</h4>
+      <p>The first physical recovery skill reaches the pregrasp pose at step 169 after 99 steps and holds it for 20 steps with a mean error of 11.8&nbsp;mm. This test stops before any grasp.</p>
+      <dl><dt>Agent</dt><dd class="na">none</dd><dt>Skills</dt><dd class="ok">✓ Reached</dd><dt>Task</dt><dd class="na">not attempted</dd></dl>
+    </article>
+    <article class="exp">
+      <video src="videos/p3-approach-handoff.mp4" poster="videos/p3-approach-handoff.jpg" muted loop playsinline preload="none" controls aria-label="Demonstration-guided approach"></video>
+      <h4>Approach, then hand off to SmolVLA</h4>
+      <p>The approach skill times out at step 260, yet SmolVLA closes the gripper at 268 and lifts the can to 7.8&nbsp;cm by step 277. The episode ends at 280. This is how we found that SAVER should position the robot and let the policy grasp.</p>
+      <dl><dt>Agent</dt><dd class="na">none</dd><dt>Skills</dt><dd class="bad">✗ Timed out</dd><dt>Task</dt><dd class="part">◐ Regrasped, out of time</dd></dl>
+    </article>
+  </div>
+
+  <h3 class="phase-h">Phases 4–5 <span>The agent in the loop</span></h3>
+  <div class="gallery">
+    <article class="exp">
+      <video src="videos/p4-agentic-280.mp4" poster="videos/p4-agentic-280.jpg" muted loop playsinline preload="none" controls aria-label="First live agentic episode"></video>
+      <h4>First live agentic recovery</h4>
+      <p>GPT-5.5 selects pregrasp, approach, then resume. SmolVLA regrasps around step 240 and lifts the can to 28.8&nbsp;cm, but the 280-step episode ends during transport.</p>
+      <dl><dt>Agent</dt><dd class="ok">✓ Appropriate</dd><dt>Skills</dt><dd class="ok">✓ Reached</dd><dt>Task</dt><dd class="part">◐ Out of time</dd></dl>
+    </article>
+    <article class="exp">
+      <video src="videos/p5-agentic-500.mp4" poster="videos/p5-agentic-500.jpg" muted loop playsinline preload="none" controls aria-label="Extended-horizon agentic episode"></video>
+      <h4>Same run, 500-step horizon</h4>
+      <p>With more time, the recovered can is placed in the basket. In the matched comparison, scripted SAVER with the same fixed sequence also succeeded, and SmolVLA alone failed.</p>
+      <dl><dt>Agent</dt><dd class="ok">✓ Appropriate</dd><dt>Skills</dt><dd class="ok">✓ Reached</dd><dt>Task</dt><dd class="ok">✓ Success</dd></dl>
+    </article>
+    <article class="exp">
+      <video src="videos/p6-1-gripper-release.mp4" poster="videos/p6-1-gripper-release.jpg" muted loop playsinline preload="none" controls aria-label="Gripper release recovery with GPT-5.2"></video>
+      <h4>A second fault: gripper release</h4>
+      <p>The gripper is forced open at step 67 and the can falls under MuJoCo physics, detected at step 80. GPT-5.2 runs pregrasp (47 steps) and approach (59 steps), then resumes the policy.</p>
+      <dl><dt>Agent</dt><dd class="ok">✓ Appropriate</dd><dt>Skills</dt><dd class="ok">✓ Reached</dd><dt>Task</dt><dd class="ok">✓ Success</dd></dl>
+    </article>
+  </div>
+
+  <h3 class="phase-h">Phase 6 <span>Replanning, blind diagnosis and capability limits</span></h3>
+  <div class="gallery">
+    <article class="exp">
+      <video src="videos/p6-2-gpt52.mp4" poster="videos/p6-2-gpt52.jpg" muted loop playsinline preload="none" controls aria-label="Phase 6.2 GPT-5.2"></video>
+      <h4>6.2: GPT-5.2 over-recovers</h4>
+      <p>Treats the reached approach pose as a failure and cycles through repositioning and offsets until its decision budget runs out at step 389. SmolVLA then completes the task on its own.</p>
+      <dl><dt>Agent</dt><dd class="bad">✗ Unnecessary repeats</dd><dt>Skills</dt><dd class="ok">✓ Reached</dd><dt>Task</dt><dd class="part">◐ Success after abort</dd></dl>
+    </article>
+    <article class="exp">
+      <video src="videos/p6-3-500.mp4" poster="videos/p6-3-500.jpg" muted loop playsinline preload="none" controls aria-label="Phase 6.3 at 500 steps"></video>
+      <h4>6.3: Replanning after an impaired trial</h4>
+      <p>The first grasp trial is impaired by forced gripper opening. GPT-5.5 attributes the failure to the actuator rather than geometry and retries, but trial 2 starts at step 483 with only 17 steps left.</p>
+      <dl><dt>Agent</dt><dd class="ok">✓ Appropriate</dd><dt>Skills</dt><dd class="part">◐ Pregrasp timed out</dd><dt>Task</dt><dd class="part">◐ Out of time</dd></dl>
+    </article>
+    <article class="exp">
+      <video src="videos/p6-3-850.mp4" poster="videos/p6-3-850.jpg" muted loop playsinline preload="none" controls aria-label="Phase 6.3 and 6.4a at 850 steps"></video>
+      <h4>6.3 and 6.4a: Verified second trial</h4>
+      <p>With an 850-step horizon the second trial is verified at step 503. Phase 6.4a repeats this with the fault name hidden and only the 40-step command mismatch visible; GPT-5.5 makes the same decisions and the trajectory is identical.</p>
+      <dl><dt>Agent</dt><dd class="ok">✓ Appropriate</dd><dt>Skills</dt><dd class="part">◐ One timeout, handled</dd><dt>Task</dt><dd class="ok">✓ Success</dd></dl>
+    </article>
+    <article class="exp">
+      <video src="videos/p6-4b-3.5cm.mp4" poster="videos/p6-4b-3.5cm.jpg" muted loop playsinline preload="none" controls aria-label="Phase 6.4b with a 3.5 centimeter bias"></video>
+      <h4>6.4b: A 3.5&nbsp;cm approach bias</h4>
+      <p>A first calibration error on the approach target. The episode finished at step 269, so this bias did not disrupt the grasp, and it was raised to 5.5&nbsp;cm for the following runs.</p>
+      <dl><dt>Agent</dt><dd class="ok">✓ Appropriate</dd><dt>Skills</dt><dd class="ok">✓ Reached</dd><dt>Task</dt><dd class="ok">✓ Completed</dd></dl>
+    </article>
+    <article class="exp">
+      <video src="videos/p6-4b-5.5cm.mp4" poster="videos/p6-4b-5.5cm.jpg" muted loop playsinline preload="none" controls aria-label="Phase 6.4b with a 5.5 centimeter bias"></video>
+      <h4>6.4b: The coordinator overrides the agent</h4>
+      <p>At step 402 GPT-5.5 requests another pregrasp to correct a 15&nbsp;cm Y error. An attempt limit it could not see rejects the request and substitutes an abort. In 6.4c, with blocked skills listed, the agent chooses the abort itself.</p>
+      <dl><dt>Agent</dt><dd class="ok">✓ Reasonable request</dd><dt>Skills</dt><dd class="bad">✗ Request rejected</dd><dt>Task</dt><dd class="part">◐ Success after abort</dd></dl>
+    </article>
+    <article class="exp">
+      <video src="videos/p6-5.mp4" poster="videos/p6-5.jpg" muted loop playsinline preload="none" controls aria-label="Phase 6.5 two-dimensional repositioning"></video>
+      <h4>6.5: A skill that stops too high</h4>
+      <p>GPT-5.5 picks the new 2D reposition skill, which aligns the gripper to within 1.2&nbsp;cm in XY but leaves it 21.4&nbsp;cm from the can, just outside the 20&nbsp;cm limit for approach. With no feasible skill left, the agent aborts at step 561.</p>
+      <dl><dt>Agent</dt><dd class="ok">✓ Appropriate</dd><dt>Skills</dt><dd class="bad">✗ Capability gap</dd><dt>Task</dt><dd class="bad">✗ Failed</dd></dl>
+    </article>
+    <article class="exp">
+      <video src="videos/p6-5-1.mp4" poster="videos/p6-5-1.jpg" muted loop playsinline preload="none" controls aria-label="Phase 6.5.1 height-aware repositioning"></video>
+      <h4>6.5.1: Height-aware skill, geometry correction</h4>
+      <p>The repositioning skill now descends to pregrasp height. After a failed first trial with no gripper mismatch, GPT-5.5 applies a −X grasp offset and the second trial is verified. Walk through it <a href="#trace-h">above</a>.</p>
+      <dl><dt>Agent</dt><dd class="ok">✓ Appropriate</dd><dt>Skills</dt><dd class="part">◐ One timeout, handled</dd><dt>Task</dt><dd class="ok">✓ Success</dd></dl>
+    </article>
+  </div>
+</section>
+
+<section class="wrap findings" aria-labelledby="find-h">
+  <h2 id="find-h">What we learned</h2>
+  <div class="prose">
+    <h3>Explicit recovery is necessary; restarting the policy is not enough</h3>
+    <p>Clearing SmolVLA’s action queue makes it re-plan from the current image, but the instruction still describes the original task and the policy did not return to the dropped can. Moving the arm back near the object, then handing control back, was what let the learned policy regrasp.</p>
+    <h3>Orchestration alone does not show the value of an agent</h3>
+    <p>Under the first two faults the agent chose the same three-skill sequence a script would, and both succeeded. An LLM that reproduces a fixed plan adds latency without adding capability. The interesting cases are those where the right action depends on evidence a script was not written for.</p>
+    <h3>Feedback and an honest outcome vocabulary drive replanning</h3>
+    <p>Agents replanned well once the coordinator separated “reached the approach pose” from “attempted a grasp and failed,” and reported supervised grasp trials as verified or not. Earlier, a persistent <code>GRASP_LOST</code> flag led GPT-5.2 to recover from failures that had not happened.</p>
+    <h3>An agent can only be as capable as its skills and constraints allow</h3>
+    <p>In 6.4b the agent’s request was sound but invisible attempt limits overrode it; in 6.5 its choice was sound but the skill ended at the wrong height. Neither was a reasoning error. Exposing executable capabilities to the agent, logging requested and executed skills separately, and fixing the skill itself each changed the outcome more than any prompt change did.</p>
+    <h3>Task success is not the same as recovery success</h3>
+    <p>Three runs reached LIBERO success after the agent had given up, because SmolVLA continued on its own. We report agent decisions, skill outcomes and task outcomes separately so that a successful episode is not credited to the agent by default.</p>
+  </div>
+</section>
+
+<section class="wrap" aria-labelledby="lim-h">
+  <h2 id="lim-h">Limitations and next steps</h2>
+  <div class="prose">
+    <p>Each result above is a single episode of a single LIBERO task, so none of them supports a success-rate claim. The verifier and the skills use privileged simulator state (object and end-effector positions, and requested versus executed gripper commands) rather than camera-based perception. Faults are injected, which keeps them controlled and repeatable but leaves open how the system handles failures that arise naturally. Several attempt limits and distance thresholds were set by hand.</p>
+    <p>The next stage is a matched evaluation across fault types and magnitudes and multiple seeds, comparing SmolVLA alone, a scripted recovery baseline that sees the same observations, and the agent, including smaller and faster models. We will measure task success, recovery success conditional on a failure, decision quality, unnecessary interventions, and the cost of reasoning in time and API calls. After that, the privileged state will be replaced with visual estimates.</p>
+  </div>
+</section>
+
+
+</main>
+
+<footer class="wrap">
+  <p>Built on <a href="https://github.com/huggingface/lerobot">LeRobot</a>, SmolVLA and the <a href="https://libero-project.github.io/">LIBERO</a> benchmark. Recovery decisions by OpenAI GPT-5.2 and GPT-5.5.</p>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var FPS = 40;           // re-encoded playback rate: one frame per simulation step
+  var TOTAL = 817;
+
+  var SEGMENTS = [
+    { a: 0,   b: 67,  k: "policy" },
+    { a: 67,  b: 80,  k: "fault" },
+    { a: 80,  b: 127, k: "skill" },
+    { a: 127, b: 200, k: "skill" },
+    { a: 200, b: 295, k: "trial" },
+    { a: 295, b: 515, k: "skill" },
+    { a: 515, b: 599, k: "skill" },
+    { a: 599, b: 672, k: "skill" },
+    { a: 672, b: 740, k: "skill" },
+    { a: 740, b: 759, k: "trial" },
+    { a: 759, b: 817, k: "policy" }
+  ];
+
+  var ITEMS = [
+    { s: 0, ev: true, name: "SmolVLA starts the task",
+      state: "Pick up the alphabet soup and place it in the basket.",
+      out: "" },
+    { s: 67, ev: true, fault: true, name: "Fault injected: gripper forced open",
+      state: "The cause is hidden from the agent.",
+      out: "" },
+    { s: 80, name: "MOVE_TO_PREGRASP",
+      state: "Grasp lost. Distance 21.9 cm, XY offset 1.9 cm.",
+      out: '<span class="ok">✓ Reached</span> in 47 steps',
+      why: "The grasp is lost and the end effector is well above the object with no verified grasp. Current EEF-object distance is too large for approach or policy handoff." },
+    { s: 127, name: "APPROACH_OBJECT",
+      state: "Distance 13.3 cm, XY offset 0.2 mm.",
+      out: '<span class="ok">✓ Reached</span> in 73 steps',
+      why: "The centered pregrasp was reached and measured XY offset to the object is negligible, so an X offset is not justified. A centered approach toward the near-grasp pose is the next feasible bounded step." },
+    { s: 200, name: "RESUME_POLICY (trial 1)",
+      state: "Distance 9.7 cm, XY offset 5.9 cm.",
+      out: '<span class="bad">✗ Not verified</span> after 95 steps. Gripper-command mismatch: 0',
+      why: "No policy grasp trial has occurred yet, so there is no trial evidence that centered grasping fails or that an X offset is needed. Although the measured XY offset is significant, this is after a predefined near-grasp approach rather than a failed grasp attempt." },
+    { s: 295, name: "REPOSITION_TO_OBJECT_2D",
+      state: "Distance 37.8 cm, XY offset 35.3 cm.",
+      out: '<span class="bad">✗ Timed out</span> after 220 steps, 12.6 cm left',
+      why: "After the policy grasp trial was not verified, the EEF is now far from the object with a large measured XY error, predominantly in Y. An X-only adjustment would not address the main offset. The prior grasp trial had no command mismatch evidence." },
+    { s: 515, name: "MOVE_TO_PREGRASP",
+      state: "Distance 24.7 cm, XY offset 12.5 cm.",
+      out: '<span class="ok">✓ Reached</span> in 84 steps',
+      why: "The failed 2D reposition timed out and still left a substantial XY offset, so repeating it immediately risks another timeout. A centered pregrasp previously reached successfully and is available." },
+    { s: 599, name: "APPROACH_OBJECT",
+      state: "Distance 13.3 cm, XY offset 0.1 mm.",
+      out: '<span class="ok">✓ Reached</span> in 73 steps',
+      why: "The remaining EEF-object distance is mostly vertical, so policy handoff is still unavailable. A centered approach is the feasible next step before using the final policy trial." },
+    { s: 672, name: "ADJUST_GRASP_POSE (−X)",
+      state: "Distance 9.6 cm, XY offset 5.9 cm, mostly +X.",
+      out: '<span class="ok">✓ Reached</span> in 68 steps; XY offset now 1.3 cm',
+      why: "The prior centered policy grasp trial from a similar near-grasp geometry was NOT_VERIFIED with low command mismatch, so a bounded X geometry correction is more justified than an unchanged final retry. Selecting negative X is intended to reduce the observed positive X offset; it is not assumed to guarantee success." },
+    { s: 740, name: "RESUME_POLICY (trial 2)",
+      state: "Distance 7.1 cm, XY offset 1.3 cm.",
+      out: '<span class="ok">✓ Verified</span> after 19 steps',
+      why: "With only one recovery decision and one policy trial left, further repositioning or adjustment would consume the budget without attempting a grasp. Hand off to SmolVLA for the final grasp attempt." },
+    { s: 817, ev: true, name: "Can placed in basket",
+      state: "LIBERO reports task success.",
+      out: '<span class="ok">✓ Task completed</span>' }
+  ];
+
+  var v = document.getElementById("tv");
+  var track = document.getElementById("track");
+  var list = document.getElementById("decisions");
+  var nowEl = document.getElementById("now");
+  if (!v || !track || !list) return;
+
+  SEGMENTS.forEach(function (g) {
+    var d = document.createElement("div");
+    d.className = "seg " + g.k;
+    d.style.left = (g.a / TOTAL * 100) + "%";
+    d.style.width = ((g.b - g.a) / TOTAL * 100) + "%";
+    track.appendChild(d);
+  });
+  var head = document.createElement("div");
+  head.className = "playhead";
+  track.appendChild(head);
+
+  var nodes = ITEMS.map(function (it, i) {
+    var li = document.createElement("li");
+    if (it.ev) li.className = "event" + (it.fault ? " fault" : "");
+    var b = document.createElement("button");
+    b.type = "button";
+    var h = '<div class="d-head"><span class="d-skill"></span><span class="d-step">Step ' + it.s + "</span></div>";
+    h += '<div class="d-state"></div>';
+    if (it.out) h += '<div class="d-out">' + it.out + "</div>";
+    if (it.why) h += '<div class="d-reason"></div>';
+    b.innerHTML = h;
+    b.querySelector(".d-skill").textContent = it.name;
+    b.querySelector(".d-state").textContent = it.state;
+    if (it.why) b.querySelector(".d-reason").textContent = "“" + it.why + "”";
+    b.addEventListener("click", function () { seek(Math.min(it.s, TOTAL - 1)); });
+    li.appendChild(b);
+    list.appendChild(li);
+    return li;
+  });
+
+  var activeIdx = -1;
+  function stepNow() { return Math.min(TOTAL, Math.round(v.currentTime * FPS)); }
+  function render() {
+    var s = stepNow();
+    head.style.left = (s / TOTAL * 100) + "%";
+    track.setAttribute("aria-valuenow", String(s));
+    nowEl.textContent = "Step " + s + " of " + TOTAL + " (" + (s / 20).toFixed(1) + " s simulated)";
+    var idx = 0;
+    for (var i = 0; i < ITEMS.length; i++) { if (ITEMS[i].s <= s + 1) idx = i; }
+    if (idx !== activeIdx) {
+      if (activeIdx >= 0) nodes[activeIdx].classList.remove("active");
+      nodes[idx].classList.add("active");
+      activeIdx = idx;
+      var el = nodes[idx];
+      var top = el.offsetTop - list.clientHeight / 3;
+      list.scrollTo({ top: Math.max(0, top), behavior: reduce ? "auto" : "smooth" });
+    }
+  }
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function seek(step) {
+    v.currentTime = step / FPS + 0.001;
+    render();
+  }
+  var raf = null;
+  function loop() { render(); if (!v.paused) raf = requestAnimationFrame(loop); }
+  v.addEventListener("play", function () { cancelAnimationFrame(raf); loop(); });
+  v.addEventListener("seeked", render);
+  v.addEventListener("timeupdate", render);
+  v.addEventListener("loadedmetadata", render);
+
+  function fromPointer(e) {
+    var r = track.getBoundingClientRect();
+    var x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    seek(Math.round(x * TOTAL));
+  }
+  track.addEventListener("click", fromPointer);
+  track.addEventListener("keydown", function (e) {
+    var s = stepNow();
+    if (e.key === "ArrowRight") { seek(Math.min(TOTAL, s + 20)); e.preventDefault(); }
+    if (e.key === "ArrowLeft") { seek(Math.max(0, s - 20)); e.preventDefault(); }
+    if (e.key === " " || e.key === "Enter") { v.paused ? v.play() : v.pause(); e.preventDefault(); }
+  });
+
+  document.querySelectorAll(".player .ctrls button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      v.playbackRate = parseFloat(b.getAttribute("data-rate"));
+      document.querySelectorAll(".player .ctrls button").forEach(function (o) {
+        o.setAttribute("aria-pressed", o === b ? "true" : "false");
+      });
+    });
+  });
+  render();
+
+  // Autoplay short looping clips only while visible, unless reduced motion is preferred.
+  if (!reduce && "IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        var vid = en.target;
+        if (en.isIntersecting) { var p = vid.play(); if (p && p.catch) p.catch(function () {}); }
+        else vid.pause();
+      });
+    }, { threshold: 0.4 });
+    document.querySelectorAll("video[data-auto]").forEach(function (vid) { io.observe(vid); });
+  }
+
+  var cb = document.getElementById("copybib");
+  if (cb) cb.addEventListener("click", function () {
+    var t = document.getElementById("bibtext").textContent;
+    try {
+      navigator.clipboard.writeText(t).then(function () { cb.textContent = "Copied"; setTimeout(function () { cb.textContent = "Copy"; }, 1600); });
+    } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>
