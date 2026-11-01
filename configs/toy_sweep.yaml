@@ -1,0 +1,12 @@
+# Toy version of the reliability sweep, to try the tooling without a GPU.
+name: toy_sweep
+env:
+  backend: toy
+faults:
+  approach_bias_x_m: 0.055
+sweep:
+  seeds: [1000, 1001, 1002]
+  episode_indices: [0]
+  grid:
+    recovery.agent: [none, queue_reset, scripted]
+    faults.transport: [forced_separation, gripper_release]

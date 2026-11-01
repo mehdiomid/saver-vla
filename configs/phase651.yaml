@@ -1,0 +1,25 @@
+# Phase 6.5.1: GPT-5.5, gripper release, hidden +5.5 cm approach bias, blind diagnosis,
+# capability-aware planning, height-aware 2D repositioning. These are the defaults,
+# written out so the experiment is self-documenting.
+name: phase651
+seed: 1000
+episode_index: 0
+env:
+  backend: libero
+  suite: libero_object
+  task_id: 0
+  episode_length: 850
+faults:
+  transport: gripper_release
+  release_steps: 15
+  approach_bias_x_m: 0.055
+  trial_impairment_steps: 0
+recovery:
+  agent: llm
+  model: gpt-5.5
+  blind: true
+  capability_aware: true
+  policy_trials: true
+  trial_steps: 95
+  max_trials: 2
+  max_decisions: 8

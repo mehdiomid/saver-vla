@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "saver-vla"
+version = "0.1.0"
+description = "Feedback-driven agentic failure recovery for vision-language-action manipulation"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Mehdi Omidghane" }, { name = "Nikki Salami" }]
+dependencies = ["numpy>=1.24", "pyyaml>=6.0"]
+
+[project.optional-dependencies]
+llm = ["openai>=1.40"]
+dev = ["pytest>=7"]
+# The LIBERO backend also needs LeRobot v0.6.1 installed from source with
+# `pip install -e ".[libero,smolvla]"` and mujoco==3.3.2 (see README).
+
+[project.scripts]
+saver = "saver_vla.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["saver_vla*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

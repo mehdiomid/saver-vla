@@ -1,0 +1,12 @@
+# Forced-separation comparison (Phases 3-5). Switch recovery.agent between
+# none | queue_reset | scripted | llm, or use sweep_reliability.yaml.
+name: separation
+env:
+  backend: libero
+  episode_length: 500
+faults:
+  transport: forced_separation
+  displacement_m: 0.12
+  approach_bias_x_m: 0.0
+recovery:
+  agent: scripted

@@ -1,0 +1,10 @@
+# Runs in seconds on any laptop: the toy world with the Phase 6.5.1 fault setup.
+# The scripted agent cannot fix the approach bias; compare with recovery.agent=llm.
+name: toy_demo
+env:
+  backend: toy
+faults:
+  transport: gripper_release
+  approach_bias_x_m: 0.055
+recovery:
+  agent: scripted
