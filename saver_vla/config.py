@@ -30,7 +30,7 @@ class EnvConfig:
     suite: str = "libero_object"
     task_id: int = 0
     episode_length: int = 850
-    object_name: str = "alphabet_soup_1"  # MuJoCo body of the manipulated object
+    object_name: str = "alphabet_soup_1"  # MuJoCo body of the object; "auto" = infer from the task sentence
     target_name: str = "basket_1"  # MuJoCo body of the placement target
     policy_path: str = "lerobot/smolvla_libero"
     device: str = "cuda"
@@ -44,9 +44,17 @@ class EnvConfig:
     # Call the policy on every step, even while a recovery skill controls the robot.
     # The notebook did this; it keeps the policy's random-number stream comparable.
     query_policy_during_skills: bool = True
+    # Save an MP4 of each episode (LIBERO backend; needs the `av` package).
+    record_video: bool = False
 
 
 # --------------------------------------------------------------------------- faults
+
+
+# Any numeric fault parameter may be a single value or a [low, high] range. Ranges are
+# sampled independently for every injection from a generator seeded by (seed, episode_index),
+# so each episode is different but every episode can be reproduced exactly.
+Range = float | list[float]
 
 
 @dataclass
@@ -55,7 +63,7 @@ class TriggerConfig:
 
     min_lift_m: float = 0.03
     min_lift_checks: int = 2
-    min_time_after_lift_s: float = 0.30
+    min_time_after_lift_s: Range = 0.30
     target_exclusion_radius_m: float = 0.12
 
 
@@ -65,14 +73,36 @@ class FaultConfig:
 
     # Transport fault during carrying: none | forced_separation | gripper_release | velocity_impulse
     transport: str = "gripper_release"
-    displacement_m: float = 0.12  # forced_separation (simulation only)
-    release_steps: int = 15  # gripper_release: force the gripper open for N steps
-    impulse_speed_mps: float = 1.5  # velocity_impulse (simulation only)
+    displacement_m: Range = 0.12  # forced_separation (simulation only)
+    release_steps: Range = 15  # gripper_release: force the gripper open for N steps (1-40)
+    impulse_speed_mps: Range = 1.5  # velocity_impulse (simulation only)
+    # Displacement / impulse direction: away_from_target | random | lateral
+    direction: str = "away_from_target"
+    direction_jitter_deg: float = 0.0  # random rotation of the direction, +/- degrees
     trigger: TriggerConfig = field(default_factory=TriggerConfig)
+    # Repeated faults: inject again after each re-lift, up to this many times per episode.
+    max_injections: int = 1
+    min_steps_between_injections: int = 40
     # Force the gripper open during the first N steps of the first policy grasp trial (Phase 6.3).
-    trial_impairment_steps: int = 0
+    trial_impairment_steps: Range = 0
     # Calibration bias added to the CENTER approach target, metres (Phase 6.4b).
-    approach_bias_x_m: float = 0.055
+    approach_bias_x_m: Range = 0.055
+    approach_bias_y_m: Range = 0.0
+
+
+@dataclass
+class NoiseConfig:
+    """Imperfect sensing and actuation (all zero = privileged simulator state).
+
+    Perception noise is applied to the state the supervisor, skills and agent see;
+    faults and task success always use the true state. Action noise is added to the
+    executed action of the policy and the skills alike.
+    """
+
+    object_position_std_m: float = 0.0  # per-step Gaussian noise on the object estimate
+    object_position_bias_m: list[float] = field(default_factory=lambda: [0.0, 0.0, 0.0])
+    eef_position_std_m: float = 0.0
+    action_std: float = 0.0  # Gaussian noise on translation commands (normalized units)
 
 
 # --------------------------------------------------------------------------- verifier
@@ -187,6 +217,8 @@ class RecoveryConfig:
         ]
     )
     trigger_events: list[str] = field(default_factory=lambda: ["SUSPECTED_TRANSPORT_SEPARATION"])
+    # How many separate failures one episode may recover from (budgets reset per recovery).
+    max_recoveries: int = 1
     max_decisions: int = 8
     max_replans: int = 2
     attempt_limit: int = 2  # per skill:variant
@@ -211,6 +243,7 @@ class ExperimentConfig:
     robot: str = "panda_libero"
     env: EnvConfig = field(default_factory=EnvConfig)
     faults: FaultConfig = field(default_factory=FaultConfig)
+    noise: NoiseConfig = field(default_factory=NoiseConfig)
     verifier: VerifierConfig = field(default_factory=VerifierConfig)
     grasp_tracker: GraspTrackerConfig = field(default_factory=GraspTrackerConfig)
     skills: SkillConfig = field(default_factory=SkillConfig)

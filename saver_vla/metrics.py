@@ -37,7 +37,7 @@ def _mean(values: list[float]) -> float | None:
 def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
     n = len(results)
     faulted = [r for r in results if r.get("fault_injected")]
-    detected = [r for r in faulted if r.get("failure_step") is not None]
+    detected = [r for r in faulted if r.get("failure_step") is not None and not r.get("false_alarm")]
     started = [r for r in results if r.get("recovery_started")]
     agent_stats = [r.get("agent") or {} for r in results]
     decisions = sum(r.get("decisions", 0) for r in results)
@@ -47,11 +47,18 @@ def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "episodes": n,
         "task_success": _rate(sum(r["success"] for r in results), n),
+        # Episodes where the fault never fired (e.g. the object reached the target first)
+        # are fault-free runs; they are excluded here so they cannot inflate the result.
+        "fault_fired": _rate(len(faulted), n),
+        "success_given_fault": _rate(sum(r["success"] for r in faulted), len(faulted)),
         "fault_detected": _rate(len(detected), len(faulted)),
         # Recovery success: episodes where the agent's supervised grasp trial was verified
         # and the task then succeeded, out of episodes where recovery started.
         "agent_recovery": _rate(sum(r.get("outcome") == "agent_recovery" for r in started), len(started)),
         "outcomes": dict(outcomes),
+        "false_alarms": sum(bool(r.get("false_alarm")) for r in results),
+        "faults_injected_mean": _mean([r.get("faults_injected", int(bool(r.get("fault_injected")))) for r in results]),
+        "recoveries_mean": _mean([r.get("recoveries", 0) for r in started]),
         "detection_latency_steps_mean": _mean([r.get("detection_latency_steps") for r in detected]),
         "decisions_mean": _mean([r.get("decisions", 0) for r in started]),
         "rejected_request_rate": (sum(r.get("rejections", 0) for r in results) / decisions) if decisions else None,
@@ -95,7 +102,8 @@ def write_report(run_dir: str | Path) -> dict[str, Any]:
 
     columns = [
         "condition", "seed", "episode_index", "success", "outcome", "fault", "fault_step",
-        "failure_step", "detection_latency_steps", "recovery_outcome", "decisions", "agent_calls",
+        "faults_injected", "false_alarm", "failure_step", "detection_latency_steps",
+        "recovery_outcome", "recoveries", "verified_recoveries", "decisions", "agent_calls",
         "rejections", "policy_trials", "verified_trial", "steps", "wall_time_s",
     ]
     with (run_dir / "summary.csv").open("w", newline="") as f:
@@ -109,15 +117,16 @@ def write_report(run_dir: str | Path) -> dict[str, Any]:
         f"# Reliability report: {run_dir.name}",
         "",
         f"{len(results)} episodes. Rates show k/n with 95% Wilson confidence intervals.",
+        "Success is counted only over episodes where the fault actually fired.",
         "",
-        "| Condition | Task success | Fault detected | Agent recovery | Mean decisions | Mean latency (steps) | Outcomes |",
-        "|---|---|---|---|---|---|---|",
+        "| Condition | Fault fired | Success given fault | Fault detected | Agent recovery | False alarms | Mean decisions | Mean latency (steps) | Outcomes |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     for name, s in summaries.items():
         outcomes = ", ".join(f"{k}: {v}" for k, v in sorted(s["outcomes"].items()))
         lines.append(
-            f"| {name} | {_fmt_rate(s['task_success'])} | {_fmt_rate(s['fault_detected'])} | "
-            f"{_fmt_rate(s['agent_recovery'])} | {_fmt(s['decisions_mean'])} | "
+            f"| {name} | {_fmt_rate(s['fault_fired'])} | {_fmt_rate(s['success_given_fault'])} | {_fmt_rate(s['fault_detected'])} | "
+            f"{_fmt_rate(s['agent_recovery'])} | {s['false_alarms']} | {_fmt(s['decisions_mean'])} | "
             f"{_fmt(s['detection_latency_steps_mean'])} | {outcomes} |"
         )
     lines += [

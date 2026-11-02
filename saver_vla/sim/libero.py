@@ -37,6 +37,7 @@ def _make_env_class():
 
         def reset(self, seed=None, **kwargs):
             observation, info = super().reset(seed=seed, **kwargs)
+            self.saver_resolve_object()
             self.saver_step = 0
             self.saver_success = False
             self._saver_obs = observation
@@ -52,6 +53,24 @@ def _make_env_class():
         # --- privileged simulator access -------------------------------------
         def _task_env(self):
             return getattr(self._env, "env", self._env)
+
+        def saver_resolve_object(self) -> str:
+            """Find the manipulated object's body from the task sentence when object_name is "auto".
+
+            "pick up the cream cheese and place it in the basket" -> "cream_cheese_1".
+            """
+            if self.saver_object_name != "auto":
+                return self.saver_object_name
+            ids = getattr(self._task_env(), "obj_body_id", {}) or {}
+            sentence = self.task_description.lower()
+            candidates = [
+                name for name in ids
+                if name != self.saver_target_name and name.rsplit("_", 1)[0].replace("_", " ") in sentence
+            ]
+            if not candidates:
+                raise RuntimeError(f"Cannot infer the object from {sentence!r}; set env.object_name. Bodies: {sorted(ids)}")
+            self.saver_object_name = max(candidates, key=len)
+            return self.saver_object_name
 
         def _body_id(self, name: str) -> int:
             task_env = self._task_env()
@@ -211,9 +230,24 @@ class LiberoBackend:
     def reset_policy(self) -> None:
         self.policy.reset()
 
+    # ------------------------------------------------------------------ video
+
+    def start_recording(self) -> None:
+        self._frames = [self.env.render()]
+
+    def save_recording(self, path: Path) -> None:
+        from lerobot.utils.io_utils import write_video
+
+        frames = getattr(self, "_frames", None)
+        if frames:
+            write_video(str(path), frames, fps=20)  # 20 Hz control = real time
+        self._frames = None
+
     def step(self, action: np.ndarray) -> tuple[bool, bool, dict[str, Any]]:
         action = np.asarray(action, dtype=np.float32)
         self._obs, reward, terminated, truncated, info = self.vec.step(action[None, :])
+        if getattr(self, "_frames", None) is not None:
+            self._frames.append(self.env.render())
         self._last_gripper = float(action[self.profile.gripper_index])
         success = bool(self.env.saver_success)
         done = bool(terminated[0] or truncated[0]) or self.env.saver_step >= self.env._max_episode_steps

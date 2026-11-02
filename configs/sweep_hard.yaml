@@ -1,0 +1,71 @@
+# Hard scenarios: each stresses one weakness the easy sweep could not reveal.
+# 9 scenarios x 2 agents x (2 seeds x 3 initial states) = 108 episodes, about 2.5 h on a
+# Colab A100/L4. Every episode samples its own fault settings, so no two are alike.
+# Scale up later with more seeds/initial states; finished episodes are skipped on re-run.
+name: hard_v1
+env:
+  backend: libero
+  episode_length: 1000
+faults:
+  approach_bias_x_m: 0.0          # each scenario sets its own faults
+recovery:
+  model: gpt-5.5
+sweep:
+  seeds: [2000, 2001]
+  episode_indices: [3, 7, 11]     # initial states not used in earlier runs
+  grid:
+    recovery.agent: [scripted, llm]
+  scenarios:
+    # Reference: the easy fault, on new initial states. Expected near 100%.
+    S0_reference:
+      faults.transport: gripper_release
+    # Object lands anywhere: 6-22 cm, any direction, early or late in transport.
+    S1_random_separation:
+      faults.transport: forced_separation
+      faults.displacement_m: [0.06, 0.22]
+      faults.direction: random
+      faults.trigger.min_time_after_lift_s: [0.2, 0.8]
+    # Longer, randomly timed gripper opening: the object falls from higher or farther.
+    S2_long_release:
+      faults.transport: gripper_release
+      faults.release_steps: [25, 40]
+      faults.trigger.min_time_after_lift_s: [0.2, 0.8]
+    # Hidden approach miscalibration in X AND Y. The grasp offset skill only shifts X.
+    S3_approach_bias_xy:
+      faults.transport: gripper_release
+      faults.approach_bias_x_m: [-0.06, 0.06]
+      faults.approach_bias_y_m: [-0.05, 0.05]
+    # The first grasp attempt is sabotaged: the gripper is forced open for 40-90 steps.
+    S4_impaired_trial:
+      faults.transport: gripper_release
+      faults.trial_impairment_steps: [40, 90]
+    # The object is lost again after the recovery. Two failures, two recoveries needed.
+    S5_repeated_faults:
+      faults.transport: gripper_release
+      faults.max_injections: 2
+      faults.min_steps_between_injections: 40
+      recovery.max_recoveries: 2
+    # Camera-like sensing: 1 cm noise and a 1 cm constant offset on the object, plus
+    # actuation noise. Recovery must work without perfect simulator state.
+    S6_noisy_sensing:
+      faults.transport: gripper_release
+      noise.object_position_std_m: 0.01
+      noise.object_position_bias_m: [0.01, -0.01, 0.0]
+      noise.action_std: 0.05
+    # Few resources: one grasp trial and four decisions, with a hidden X bias.
+    S7_tight_budget:
+      faults.transport: gripper_release
+      faults.approach_bias_x_m: [0.03, 0.06]
+      recovery.max_decisions: 4
+      recovery.max_trials: 1
+    # Everything at once.
+    S8_combined:
+      faults.transport: forced_separation
+      faults.displacement_m: [0.06, 0.22]
+      faults.direction: random
+      faults.trigger.min_time_after_lift_s: [0.2, 0.8]
+      faults.approach_bias_x_m: [-0.05, 0.05]
+      faults.trial_impairment_steps: [0, 60]
+      faults.max_injections: 2
+      recovery.max_recoveries: 2
+      noise.object_position_std_m: 0.005

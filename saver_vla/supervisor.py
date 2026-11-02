@@ -77,6 +77,16 @@ class RecoverySupervisor:
         self.outcome: str | None = None  # VERIFIED | ABORTED | RESUMED | BUDGET_EXHAUSTED
         self.failure_type: str | None = None
         self.failure_step: int | None = None
+        self.failure_steps: list[int] = []
+        self.recoveries = 0
+        self.verified_recoveries = 0
+        self.outcomes: list[str] = []
+        self.totals = {"decisions": 0, "agent_calls": 0, "rejections": 0, "policy_trials": 0}
+        self._new_recovery_state()
+        self.policy_reset_pending = False
+
+    def _new_recovery_state(self) -> None:
+        """Per-recovery budgets and history; totals are kept across recoveries."""
         self.last_skill: str | None = None
         self.last_result_detail: dict[str, Any] | None = None
         self.decisions = 0
@@ -90,7 +100,6 @@ class RecoverySupervisor:
         self.trial_mismatch_steps = 0
         self.verified_trial: int | None = None
         self._requested_gripper: float | None = None
-        self.policy_reset_pending = False
 
     @property
     def controlling(self) -> bool:
@@ -125,14 +134,24 @@ class RecoverySupervisor:
 
         for event in self.verifier.update(state):
             self.log.write("VERIFIER_EVENT", **event)
-            if event["event_type"] not in self.rc.trigger_events or self.recovery_started:
+            if event["event_type"] not in self.rc.trigger_events:
+                continue
+            idle = (not self.recovery_started) or (self.recovery_finished and self.outcome == "VERIFIED")
+            if not idle or self.recoveries >= self.rc.max_recoveries:
                 continue
             if self.failure_step is None:
                 self.failure_type = event["event_type"]
                 self.failure_step = state.step
-                self.log.write("FAILURE", event=event)
+            self.failure_steps.append(state.step)
+            self.log.write("FAILURE", event=event, recovery=self.recoveries + 1)
             if self.agent is not None:
+                if self.recovery_started:  # a further failure after a verified recovery
+                    self._close_recovery_totals()
+                    self._new_recovery_state()
+                    self.recovery_finished = False
+                    self.outcome = None
                 self.recovery_started = True
+                self.recoveries += 1
                 self._decide(self.failure_type, None)
             elif self.rc.enabled and self.rc.agent == "queue_reset":
                 # Phase 3 baseline: restart policy inference, no recovery skills.
@@ -168,6 +187,8 @@ class RecoverySupervisor:
             self.verified_trial = self.trial_count
             self.recovery_finished = True
             self.outcome = "VERIFIED"
+            self.verified_recoveries += 1
+            self.verifier.rearm(state)  # keep watching: the object may be lost again
             self.log.write(
                 "POLICY_TRIAL_OUTCOME", trial=self.trial_count, phase="VERIFIED", elapsed=elapsed,
                 step=state.step, worker_info=info,
@@ -359,16 +380,34 @@ class RecoverySupervisor:
 
     # ------------------------------------------------------------------ summary
 
+    def _close_recovery_totals(self) -> None:
+        if self.outcome:
+            self.outcomes.append(self.outcome)
+        self.totals["decisions"] += self.decisions
+        self.totals["agent_calls"] += self.agent_calls
+        self.totals["rejections"] += self.rejections
+        self.totals["policy_trials"] += self.trial_count
+
     def summary(self) -> dict[str, Any]:
+        totals = dict(self.totals)
+        totals["decisions"] += self.decisions
+        totals["agent_calls"] += self.agent_calls
+        totals["rejections"] += self.rejections
+        totals["policy_trials"] += self.trial_count
+        outcomes = self.outcomes + ([self.outcome] if self.outcome else [])
         return {
             "failure_type": self.failure_type,
             "failure_step": self.failure_step,
+            "failure_steps": list(self.failure_steps),
             "recovery_started": self.recovery_started,
             "recovery_outcome": self.outcome,
-            "decisions": self.decisions,
-            "agent_calls": self.agent_calls,
-            "rejections": self.rejections,
+            "recovery_outcomes": outcomes,
+            "recoveries": self.recoveries,
+            "verified_recoveries": self.verified_recoveries,
+            "decisions": totals["decisions"],
+            "agent_calls": totals["agent_calls"],
+            "rejections": totals["rejections"],
             "skill_attempts": dict(self.skill_counts),
-            "policy_trials": self.trial_count,
+            "policy_trials": totals["policy_trials"],
             "verified_trial": self.verified_trial,
         }

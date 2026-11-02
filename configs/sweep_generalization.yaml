@@ -1,0 +1,18 @@
+# Generalization to other objects: the 9 other LIBERO-Object tasks (cream cheese,
+# bottles, boxes...). The recovery skills were tuned on the soup can only; their grasp
+# offset is a demonstrated pose for that can. The object body is found from the task text.
+# 9 tasks x 3 controllers (policy alone, scripted, GPT-5.5) x 3 initial states = 81 episodes.
+name: generalization_v1
+env:
+  backend: libero
+  episode_length: 1000
+  object_name: auto
+faults:
+  transport: gripper_release
+  approach_bias_x_m: 0.0
+sweep:
+  seeds: [3000]
+  episode_indices: [0, 5, 10]
+  grid:
+    env.task_id: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    recovery.agent: [none, scripted, llm]

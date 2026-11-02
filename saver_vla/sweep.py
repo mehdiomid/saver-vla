@@ -6,6 +6,8 @@
       grid:
         recovery.agent: [none, scripted, llm]
         faults.transport: [forced_separation, gripper_release]
+      scenarios:              # optional: named bundles of settings, crossed with the grid
+        long_release: {faults.transport: gripper_release, faults.release_steps: [25, 40]}
 
 Results go to <output_dir>/<name>/<condition>/s<seed>_e<episode>/. Finished
 episodes are skipped on re-run, so an interrupted Colab session can resume.
@@ -37,15 +39,19 @@ def expand(raw: dict[str, Any], overrides: list[str] | None = None) -> list[tupl
     seeds = spec.get("seeds", [base.get("seed", 1000)])
     episodes = spec.get("episode_indices", [base.get("episode_index", 0)])
     grid: dict[str, list[Any]] = spec.get("grid", {}) or {}
+    scenarios: dict[str, dict[str, Any]] = spec.get("scenarios") or {"": {}}
     keys = list(grid)
     runs = []
-    for combo in itertools.product(*(grid[k] for k in keys)) if keys else [()]:
-        condition = ",".join(_label(k, v) for k, v in zip(keys, combo)) or "base"
-        combo_overrides = [f"{k}={json.dumps(v)}" for k, v in zip(keys, combo)]
-        for seed in seeds:
-            for ep in episodes:
-                cfg = config_from_dict(base, combo_overrides + [f"seed={seed}", f"episode_index={ep}"])
-                runs.append((condition, cfg))
+    for scenario, settings in scenarios.items():
+        scenario_overrides = [f"{k}={json.dumps(v)}" for k, v in (settings or {}).items()]
+        for combo in itertools.product(*(grid[k] for k in keys)) if keys else [()]:
+            labels = ([f"scenario={scenario}"] if scenario else []) + [_label(k, v) for k, v in zip(keys, combo)]
+            condition = ",".join(labels) or "base"
+            combo_overrides = scenario_overrides + [f"{k}={json.dumps(v)}" for k, v in zip(keys, combo)]
+            for seed in seeds:
+                for ep in episodes:
+                    cfg = config_from_dict(base, combo_overrides + [f"seed={seed}", f"episode_index={ep}"])
+                    runs.append((condition, cfg))
     return runs
 
 

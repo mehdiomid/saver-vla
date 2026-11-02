@@ -45,6 +45,15 @@ class TransportVerifier:
         self.transport_finished = False
         self.reported: set[str] = set()
 
+    def rearm(self, state: RobotState) -> None:
+        """Resume transport monitoring after a recovered grasp, so a later failure is detected."""
+        self.lift_confirmed = True
+        self.reference_offset = state.object_xyz - state.eef_xyz
+        self.max_height = float(state.object_xyz[2])
+        self.separation_count = 0
+        self.transport_finished = False
+        self.reported.discard(SEPARATION)
+
     def update(self, state: RobotState) -> list[dict[str, Any]]:
         c = self.cfg
         obj, eef, t, step = state.object_xyz, state.eef_xyz, state.time, state.step
