@@ -38,6 +38,15 @@ def _make_env_class():
         def reset(self, seed=None, **kwargs):
             observation, info = super().reset(seed=seed, **kwargs)
             self.saver_resolve_object()
+            # robosuite has its own step limit ("horizon", 1000 by default), and LeRobot's
+            # reset already spends `num_steps_wait` settling steps of it. LIBERO reports
+            # `done` as task success only, so hitting that hidden limit is not reported:
+            # the next step raises "executing action in terminated episode". Extend the
+            # limit so `env.episode_length` is the only step limit that applies.
+            task_env = self._task_env()
+            needed = int(self._max_episode_steps) + int(self.num_steps_wait) + 1
+            if getattr(task_env, "horizon", needed) < needed:
+                task_env.horizon = needed
             self.saver_step = 0
             self.saver_success = False
             self._saver_obs = observation
@@ -250,7 +259,12 @@ class LiberoBackend:
             self._frames.append(self.env.render())
         self._last_gripper = float(action[self.profile.gripper_index])
         success = bool(self.env.saver_success)
-        done = bool(terminated[0] or truncated[0]) or self.env.saver_step >= self.env._max_episode_steps
+        hidden_done = bool(getattr(self.env._task_env(), "done", False))  # robosuite's own limit
+        done = (
+            bool(terminated[0] or truncated[0])
+            or hidden_done
+            or self.env.saver_step >= self.env._max_episode_steps
+        )
         return done, success, {"reward": float(np.asarray(reward)[0])}
 
     def inject_object_fault(self, kind: str, direction_xy: np.ndarray, cfg: FaultConfig) -> dict[str, Any]:
