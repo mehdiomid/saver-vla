@@ -1,5 +1,5 @@
 # Hard scenarios: each stresses one weakness the easy sweep could not reveal.
-# 9 scenarios x 2 agents x (2 seeds x 3 initial states) = 108 episodes, about 2.5 h on a
+# 9 scenarios x 2 agents x (2 seeds x 2 initial states) = 72 episodes, about 2 h on a
 # Colab A100/L4. Every episode samples its own fault settings, so no two are alike.
 # Scale up later with more seeds/initial states; finished episodes are skipped on re-run.
 name: hard_v1
@@ -12,7 +12,7 @@ recovery:
   model: gpt-5.5
 sweep:
   seeds: [2000, 2001]
-  episode_indices: [3, 7, 11]     # initial states not used in earlier runs
+  episode_indices: [7, 11]        # state 3 removed: SmolVLA fails it with no fault (nominal_screen)
   grid:
     recovery.agent: [scripted, llm]
   scenarios:

@@ -1,0 +1,9 @@
+# Re-check the states that failed in nominal_screen with other seeds: is the failure
+# a property of the scene, or of one unlucky policy sample? No LLM calls.
+name: nominal_rescreen
+env: {backend: libero, episode_length: 600}
+faults: {transport: none}
+recovery: {agent: none}
+sweep:
+  seeds: [2001, 2002]
+  episode_indices: [3, 10, 13, 14]

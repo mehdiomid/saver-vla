@@ -27,9 +27,18 @@ def main(argv: list[str] | None = None) -> int:
     sweep.add_argument("config")
     sweep.add_argument("--set", action="append", default=[], metavar="KEY=VALUE")
     sweep.add_argument("--dry-run", action="store_true", help="list the episodes without running them")
+    sweep.add_argument(
+        "--continue-on-agent-error", action="store_true",
+        help="keep going after an LLM/API error (default: stop, so results are not wasted)",
+    )
 
     report = sub.add_parser("report", help="summarize all results under a folder")
     report.add_argument("run_dir")
+
+    comp = sub.add_parser("compare", help="statistically compare controllers within a sweep")
+    comp.add_argument("run_dir")
+    comp.add_argument("--a", help="condition A (default: compare every pair differing only in agent)")
+    comp.add_argument("--b", help="condition B")
 
     args = parser.parse_args(argv)
 
@@ -51,7 +60,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "sweep":
         from .sweep import run_sweep
 
-        run_sweep(args.config, args.set, dry_run=args.dry_run)
+        run_sweep(args.config, args.set, dry_run=args.dry_run, stop_on_agent_error=not args.continue_on_agent_error)
+        return 0
+
+    if args.command == "compare":
+        from .stats import compare_conditions
+
+        text = compare_conditions(args.run_dir, args.a, args.b)
+        (Path(args.run_dir) / "comparisons.md").write_text(text)
+        print(text)
         return 0
 
     if args.command == "report":

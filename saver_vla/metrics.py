@@ -57,6 +57,7 @@ def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
         "agent_recovery": _rate(sum(r.get("outcome") == "agent_recovery" for r in started), len(started)),
         "outcomes": dict(outcomes),
         "false_alarms": sum(bool(r.get("false_alarm")) for r in results),
+        "agent_errors": sum(int(r.get("agent_errors") or 0) for r in results),
         "faults_injected_mean": _mean([r.get("faults_injected", int(bool(r.get("fault_injected")))) for r in results]),
         "recoveries_mean": _mean([r.get("recoveries", 0) for r in started]),
         "detection_latency_steps_mean": _mean([r.get("detection_latency_steps") for r in detected]),
@@ -103,7 +104,7 @@ def write_report(run_dir: str | Path) -> dict[str, Any]:
     columns = [
         "condition", "seed", "episode_index", "success", "outcome", "fault", "fault_step",
         "faults_injected", "false_alarm", "failure_step", "detection_latency_steps",
-        "recovery_outcome", "recoveries", "verified_recoveries", "decisions", "agent_calls",
+        "recovery_outcome", "recoveries", "verified_recoveries", "decisions", "agent_calls", "agent_errors",
         "rejections", "policy_trials", "verified_trial", "steps", "wall_time_s",
     ]
     with (run_dir / "summary.csv").open("w", newline="") as f:
@@ -119,14 +120,14 @@ def write_report(run_dir: str | Path) -> dict[str, Any]:
         f"{len(results)} episodes. Rates show k/n with 95% Wilson confidence intervals.",
         "Success is counted only over episodes where the fault actually fired.",
         "",
-        "| Condition | Fault fired | Success given fault | Fault detected | Agent recovery | False alarms | Mean decisions | Mean latency (steps) | Outcomes |",
-        "|---|---|---|---|---|---|---|---|---|",
+        "| Condition | Fault fired | Success given fault | Fault detected | Agent recovery | False alarms | Agent errors | Mean decisions | Mean latency (steps) | Outcomes |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for name, s in summaries.items():
         outcomes = ", ".join(f"{k}: {v}" for k, v in sorted(s["outcomes"].items()))
         lines.append(
             f"| {name} | {_fmt_rate(s['fault_fired'])} | {_fmt_rate(s['success_given_fault'])} | {_fmt_rate(s['fault_detected'])} | "
-            f"{_fmt_rate(s['agent_recovery'])} | {s['false_alarms']} | {_fmt(s['decisions_mean'])} | "
+            f"{_fmt_rate(s['agent_recovery'])} | {s['false_alarms']} | {s['agent_errors']} | {_fmt(s['decisions_mean'])} | "
             f"{_fmt(s['detection_latency_steps_mean'])} | {outcomes} |"
         )
     lines += [
@@ -134,7 +135,35 @@ def write_report(run_dir: str | Path) -> dict[str, Any]:
         "Outcome labels: `agent_recovery` = a supervised grasp trial was verified and the task succeeded;",
         "`policy_after_abort` = the task succeeded only after the agent ended its intervention;",
         "`resumed_success` = success after control was returned without a verified trial;",
-        "`policy_only_success` = success with no recovery; `nominal_success` = no fault was injected.",
+        "`policy_only_success` = success with no recovery; `nominal_success` = no fault was injected;",
+        "`nominal_failure` = the policy failed before any fault fired (not a recovery result);",
+        "`agent_rescue` = no fault was injected, but the agent recovered a failure of the policy itself;",
+        "`agent_error` = the agent could not be reached (API error); exclude and re-run.",
     ]
     (run_dir / "report.md").write_text("\n".join(lines) + "\n")
+    (run_dir / "table.tex").write_text(latex_table(summaries))
     return summaries
+
+
+def latex_table(summaries: dict[str, Any]) -> str:
+    """A booktabs table for papers: success given fault and agent recovery, with 95% CIs."""
+
+    def cell(rate: dict[str, Any]) -> str:
+        if not rate["n"]:
+            return "--"
+        lo, hi = rate["ci95"]
+        return f"{rate['k']}/{rate['n']} ({100 * lo:.0f}--{100 * hi:.0f}\\%)"
+
+    rows = [
+        "\\begin{tabular}{@{}lccc@{}}",
+        "\\toprule",
+        "Condition & Success given fault & Agent recovery & Decisions \\\\",
+        "\\midrule",
+    ]
+    for name, s in summaries.items():
+        label = name.replace("_", "\\_").replace("=", ": ").replace(",", ", ")
+        rows.append(
+            f"{label} & {cell(s['success_given_fault'])} & {cell(s['agent_recovery'])} & {_fmt(s['decisions_mean'])} \\\\"
+        )
+    rows += ["\\bottomrule", "\\end{tabular}", ""]
+    return "\n".join(rows)

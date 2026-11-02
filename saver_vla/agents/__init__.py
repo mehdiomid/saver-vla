@@ -150,7 +150,8 @@ class LLMAgent(Agent):
         blind: bool = True,
         capability_aware: bool = True,
         history_length: int = 7,
-        timeout_s: float = 45.0,
+        timeout_s: float = 90.0,
+        max_retries: int = 4,
         client: Any = None,
     ):
         super().__init__()
@@ -175,7 +176,7 @@ class LLMAgent(Agent):
                 from openai import OpenAI
             except ImportError as exc:  # pragma: no cover - depends on optional extra
                 raise ImportError("LLMAgent needs `pip install saver-vla[llm]` (openai).") from exc
-            client = OpenAI(timeout=timeout_s, max_retries=1)
+            client = OpenAI(timeout=timeout_s, max_retries=max_retries)
         self.client = client
         self.name = f"llm:{model}"
 
@@ -224,6 +225,7 @@ def make_agent(recovery_cfg: Any) -> Agent | None:
             capability_aware=recovery_cfg.capability_aware,
             history_length=recovery_cfg.history_length,
             timeout_s=recovery_cfg.llm_timeout_s,
+            max_retries=recovery_cfg.llm_max_retries,
         )
     if kind == "replay":
         if not recovery_cfg.replay_log:

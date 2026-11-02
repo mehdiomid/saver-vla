@@ -1,0 +1,11 @@
+# Find LIBERO initial states where SmolVLA completes the task without any fault or agent.
+# Use only those states in recovery sweeps: from a state where the policy never lifts the
+# object, the fault cannot fire and the episode says nothing about recovery.
+# No LLM calls. Successful episodes end early, so this takes about 30-40 minutes.
+name: nominal_screen
+env: {backend: libero, episode_length: 600}
+faults: {transport: none}
+recovery: {agent: none}
+sweep:
+  seeds: [2000]
+  episode_indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]

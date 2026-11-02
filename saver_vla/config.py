@@ -228,7 +228,8 @@ class RecoveryConfig:
     policy_trials: bool = True
     trial_steps: int = 95
     max_trials: int = 2
-    llm_timeout_s: float = 45.0
+    llm_timeout_s: float = 90.0
+    llm_max_retries: int = 4  # retries with exponential backoff (rate limits, timeouts)
 
 
 # --------------------------------------------------------------------------- top level

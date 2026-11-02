@@ -1,0 +1,19 @@
+# E2 - Where does reasoning help? GPT-5.5 versus the fixed script on hard faults.
+# 5 scenarios x 2 agents x 8 fresh initial states = 80 episodes (40 with GPT-5.5).
+# Paired design: both agents face the identical sampled fault in each episode, so
+# `saver compare` can use McNemar's test.
+name: paper_E2_hard
+env: {backend: libero, episode_length: 1000}
+faults: {approach_bias_x_m: 0.0}
+recovery: {model: gpt-5.5}
+sweep:
+  seeds: [5000]
+  episode_indices: [2, 4, 5, 6, 8, 9, 12, 15]
+  grid:
+    recovery.agent: [scripted, llm]
+  scenarios:
+    S1_random_separation: {faults.transport: forced_separation, faults.displacement_m: [0.06, 0.22], faults.direction: random, faults.trigger.min_time_after_lift_s: [0.2, 0.8]}
+    S3_approach_bias_xy: {faults.transport: gripper_release, faults.approach_bias_x_m: [-0.06, 0.06], faults.approach_bias_y_m: [-0.05, 0.05]}
+    S4_impaired_trial: {faults.transport: gripper_release, faults.trial_impairment_steps: [40, 90]}
+    S5_repeated_faults: {faults.transport: gripper_release, faults.max_injections: 2, recovery.max_recoveries: 2}
+    S8_combined: {faults.transport: forced_separation, faults.displacement_m: [0.06, 0.22], faults.direction: random, faults.trigger.min_time_after_lift_s: [0.2, 0.8], faults.approach_bias_x_m: [-0.05, 0.05], faults.trial_impairment_steps: [0, 60], faults.max_injections: 2, recovery.max_recoveries: 2, noise.object_position_std_m: 0.005}

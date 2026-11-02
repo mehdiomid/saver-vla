@@ -82,6 +82,8 @@ class RecoverySupervisor:
         self.verified_recoveries = 0
         self.outcomes: list[str] = []
         self.totals = {"decisions": 0, "agent_calls": 0, "rejections": 0, "policy_trials": 0}
+        self.agent_errors = 0
+        self.agent_error_messages: list[str] = []
         self._new_recovery_state()
         self.policy_reset_pending = False
 
@@ -285,7 +287,9 @@ class RecoverySupervisor:
             decision = self.agent.decide(observation)
         except Exception as exc:  # LLM/network/parse errors end the intervention safely
             decision = _abort(f"Agent error: {str(exc)[:200]}")
-            self.log.write("AGENT_ERROR", error=str(exc)[:500], step=observation["step"])
+            self.agent_errors += 1
+            self.agent_error_messages.append(f"{type(exc).__name__}: {str(exc)[:300]}")
+            self.log.write("AGENT_ERROR", error=f"{type(exc).__name__}: {str(exc)[:500]}", step=observation["step"])
             return decision
         self.log.write("AGENT_CALL", step=observation["step"], decision=decision)
         return decision
@@ -410,4 +414,6 @@ class RecoverySupervisor:
             "skill_attempts": dict(self.skill_counts),
             "policy_trials": totals["policy_trials"],
             "verified_trial": self.verified_trial,
+            "agent_errors": self.agent_errors,
+            "agent_error_messages": list(self.agent_error_messages[:3]),
         }

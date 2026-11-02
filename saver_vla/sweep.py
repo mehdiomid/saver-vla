@@ -33,9 +33,10 @@ def _label(key: str, value: Any) -> str:
 
 
 def expand(raw: dict[str, Any], overrides: list[str] | None = None) -> list[tuple[str, ExperimentConfig]]:
-    raw = dict(raw)
+    # Overrides may also target the sweep itself, e.g. `sweep.episode_indices=[2,5,9]`.
+    raw = apply_overrides(dict(raw), overrides)
     spec = raw.pop("sweep", None) or {}
-    base = apply_overrides(raw, overrides)
+    base = raw
     seeds = spec.get("seeds", [base.get("seed", 1000)])
     episodes = spec.get("episode_indices", [base.get("episode_index", 0)])
     grid: dict[str, list[Any]] = spec.get("grid", {}) or {}
@@ -55,7 +56,37 @@ def expand(raw: dict[str, Any], overrides: list[str] | None = None) -> list[tupl
     return runs
 
 
-def run_sweep(path: str | Path, overrides: list[str] | None = None, dry_run: bool = False) -> dict[str, Any]:
+class AgentUnavailable(RuntimeError):
+    """The LLM agent could not be reached; results would measure the API, not the method."""
+
+
+def preflight_llm(cfg: ExperimentConfig) -> None:
+    """One cheap test call before hours of simulation, so key/quota/model errors surface now."""
+    from .agents import make_agent
+
+    agent = make_agent(cfg.recovery)
+    probe = {
+        "step": 0,
+        "failure": "PREFLIGHT_CHECK",
+        "available_actions": ["ABORT_RECOVERY:CENTER"],
+        "unavailable_actions": {},
+    }
+    try:
+        decision = agent.decide(probe)
+    except Exception as exc:
+        raise AgentUnavailable(
+            f"LLM preflight failed ({type(exc).__name__}: {exc}). Check OPENAI_API_KEY, quota, "
+            f"and that model '{cfg.recovery.model}' is available to your account."
+        ) from exc
+    print(f"LLM preflight OK ({cfg.recovery.model}): {decision['skill']}")
+
+
+def run_sweep(
+    path: str | Path,
+    overrides: list[str] | None = None,
+    dry_run: bool = False,
+    stop_on_agent_error: bool = True,
+) -> dict[str, Any]:
     raw = yaml.safe_load(Path(path).read_text()) or {}
     runs = expand(raw, overrides)
     name = raw.get("name", Path(path).stem)
@@ -66,12 +97,19 @@ def run_sweep(path: str | Path, overrides: list[str] | None = None, dry_run: boo
             print(f"  {condition} seed={cfg.seed} episode={cfg.episode_index}")
         return {}
 
+    llm_runs = [cfg for _, cfg in runs if cfg.recovery.enabled and cfg.recovery.agent == "llm"]
+    if llm_runs:
+        preflight_llm(llm_runs[0])
+
     backend, backend_key = None, None
     for i, (condition, cfg) in enumerate(runs, 1):
         out = root / condition / f"s{cfg.seed}_e{cfg.episode_index}"
         if (out / "result.json").exists():
-            print(f"[{i}/{len(runs)}] {condition} seed={cfg.seed} ep={cfg.episode_index}: done, skipping")
-            continue
+            previous = json.loads((out / "result.json").read_text())
+            if previous.get("outcome") != "agent_error" and not previous.get("agent_errors"):
+                print(f"[{i}/{len(runs)}] {condition} seed={cfg.seed} ep={cfg.episode_index}: done, skipping")
+                continue
+            print(f"[{i}/{len(runs)}] {condition} seed={cfg.seed} ep={cfg.episode_index}: had agent errors, re-running")
         key = json.dumps(cfg.to_dict()["env"], sort_keys=True)
         if key != backend_key:
             if backend is not None:
@@ -84,6 +122,15 @@ def run_sweep(path: str | Path, overrides: list[str] | None = None, dry_run: boo
             f"[{i}/{len(runs)}] {condition} seed={cfg.seed} ep={cfg.episode_index}: "
             f"success={result['success']} outcome={result['outcome']}"
         )
+        if result.get("agent_errors") and stop_on_agent_error:
+            if backend is not None:
+                backend.close()
+            raise AgentUnavailable(
+                "Agent error during the sweep; stopping so no more episodes are wasted. "
+                f"First error: {(result.get('agent_error_messages') or ['?'])[0]}. "
+                "Fix the cause and re-run the same command: finished episodes are kept, "
+                "and episodes with agent errors are re-run automatically."
+            )
     if backend is not None:
         backend.close()
     summaries = write_report(root)

@@ -94,7 +94,43 @@ def test_y_bias_defeats_x_only_correction():
 
 
 def test_hard_sweep_files_expand():
-    for path, n in [("configs/sweep_hard.yaml", 108), ("configs/sweep_generalization.yaml", 81)]:
+    for path, n in [("configs/sweep_hard.yaml", 72), ("configs/sweep_generalization.yaml", 81),
+                    ("configs/sweep_hard_llm.yaml", 20), ("configs/nominal_screen.yaml", 16)]:
         runs = expand(yaml.safe_load(open(path)))
         assert len(runs) == n
         assert len({cfg.seed * 1000 + cfg.episode_index for _, cfg in runs}) > 1
+
+
+def test_agent_errors_are_labelled_and_stop_a_sweep(tmp_path, monkeypatch):
+    from saver_vla import sweep as sweep_mod
+    from saver_vla.sweep import AgentUnavailable
+
+    def broken(obs):
+        raise TimeoutError("API timed out")
+
+    cfg = toy(faults={"transport": "gripper_release"})
+    r = run_episode(cfg, make_backend(cfg), agent=CallableAgent(broken))
+    assert r["outcome"] == "agent_error" and r["agent_errors"] == 1
+    assert "TimeoutError" in r["agent_error_messages"][0]
+
+    # A sweep stops at the first episode with an agent error ...
+    monkeypatch.setattr(sweep_mod, "make_agent", lambda rc: CallableAgent(broken), raising=False)
+    import saver_vla.runner as runner_mod
+    monkeypatch.setattr(runner_mod, "make_agent", lambda rc: CallableAgent(broken))
+    path = tmp_path / "s.yaml"
+    path.write_text(f"name: s\noutput_dir: {tmp_path}\nenv: {{backend: toy}}\nrecovery: {{agent: scripted}}\n"
+                    "sweep:\n  seeds: [1, 2]\n")
+    with pytest.raises(AgentUnavailable):
+        sweep_mod.run_sweep(path)
+    assert len(list((tmp_path / "s").rglob("result.json"))) == 1
+    # ... and re-runs that episode once the agent works again.
+    monkeypatch.undo()
+    summaries = sweep_mod.run_sweep(path)
+    assert summaries["base"]["agent_errors"] == 0
+
+
+def test_policy_failure_before_fault_is_not_a_recovery_failure():
+    from saver_vla.runner import classify
+
+    assert classify(False, False, {}) == "nominal_failure"
+    assert classify(False, True, {}) == "failure"

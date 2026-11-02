@@ -44,9 +44,14 @@ def make_backend(cfg: ExperimentConfig) -> Backend:
 
 def classify(success: bool, fault_injected: bool, summary: dict[str, Any]) -> str:
     """Attribute the episode outcome, so task success is not credited to the agent by default."""
+    if summary.get("agent_errors"):
+        return "agent_error"  # the agent was unreachable: the episode does not measure recovery
     if not success:
-        return "failure"
+        return "failure" if fault_injected else "nominal_failure"
     if not fault_injected:
+        # No injected fault, but the agent recovered from the policy's own failure (E5).
+        if summary.get("recoveries") and summary.get("recovery_outcome") == "VERIFIED":
+            return "agent_rescue"
         return "nominal_success"
     outcome = summary.get("recovery_outcome")
     recoveries = summary.get("recoveries", 0)

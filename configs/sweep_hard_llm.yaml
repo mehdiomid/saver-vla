@@ -1,0 +1,19 @@
+# GPT-5.5 runs for the scenarios where the scripted agent struggled (S1, S3, S4, S6, S8).
+# Same initial states (7, 11) and seeds as the scripted runs in sweep_hard.yaml, and the
+# same output name, so `saver report <output_dir>/hard_v1` combines both into one report.
+# 5 scenarios x 2 seeds x 2 initial states = 20 episodes.
+name: hard_v1
+env: {backend: libero, episode_length: 1000}
+faults: {approach_bias_x_m: 0.0}
+recovery: {model: gpt-5.5}
+sweep:
+  seeds: [2000, 2001]
+  episode_indices: [7, 11]
+  grid:
+    recovery.agent: [llm]
+  scenarios:
+    S1_random_separation: {faults.transport: forced_separation, faults.displacement_m: [0.06, 0.22], faults.direction: random, faults.trigger.min_time_after_lift_s: [0.2, 0.8]}
+    S3_approach_bias_xy: {faults.transport: gripper_release, faults.approach_bias_x_m: [-0.06, 0.06], faults.approach_bias_y_m: [-0.05, 0.05]}
+    S4_impaired_trial: {faults.transport: gripper_release, faults.trial_impairment_steps: [40, 90]}
+    S6_noisy_sensing: {faults.transport: gripper_release, noise.object_position_std_m: 0.01, noise.object_position_bias_m: [0.01, -0.01, 0.0], noise.action_std: 0.05}
+    S8_combined: {faults.transport: forced_separation, faults.displacement_m: [0.06, 0.22], faults.direction: random, faults.trigger.min_time_after_lift_s: [0.2, 0.8], faults.approach_bias_x_m: [-0.05, 0.05], faults.trial_impairment_steps: [0, 60], faults.max_injections: 2, recovery.max_recoveries: 2, noise.object_position_std_m: 0.005}

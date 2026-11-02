@@ -1,0 +1,21 @@
+# E1 - Main reliability study (answers "repeated trials and recovery success rates").
+# 4 controllers x 2 fault families x (2 seeds x 8 fresh initial states) = 128 episodes
+# (32 with GPT-5.5). Faults are randomized per episode, and every controller faces the
+# same sampled fault for a given seed and state, so comparisons are paired.
+# Initial states: those where SmolVLA succeeds without faults (nominal_screen), excluding
+# states used during development (0, 1) and in the hard sweep (7, 11).
+name: paper_E1_main
+env: {backend: libero, episode_length: 1000}
+faults:
+  approach_bias_x_m: 0.0
+  displacement_m: [0.06, 0.18]
+  direction: random
+  release_steps: [10, 30]
+  trigger: {min_time_after_lift_s: [0.2, 0.8]}
+recovery: {model: gpt-5.5}
+sweep:
+  seeds: [4000, 4001]
+  episode_indices: [2, 4, 5, 6, 8, 9, 12, 15]
+  grid:
+    recovery.agent: [none, queue_reset, scripted, llm]
+    faults.transport: [forced_separation, gripper_release]

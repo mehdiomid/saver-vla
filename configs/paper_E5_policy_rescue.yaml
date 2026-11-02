@@ -1,0 +1,17 @@
+# E5 - Can the same agentic layer rescue SmolVLA's OWN failures (no injected fault)?
+# Uses the initial states where SmolVLA fails nominally (nominal_screen: 3, 10, 13, 14).
+# Recovery starts when the verifier sees "approached but never lifted" for 3 s.
+# 3 controllers x (2 seeds x 4 states) = 24 episodes (8 with GPT-5.5).
+# Rescued episodes are labelled `agent_rescue`; `nominal_success` means the policy
+# succeeded on its own this time (the state's failure is then seed-dependent).
+name: paper_E5_policy_rescue
+env: {backend: libero, episode_length: 1000}
+faults: {transport: none, approach_bias_x_m: 0.0}
+recovery:
+  model: gpt-5.5
+  trigger_events: [SUSPECTED_TRANSPORT_SEPARATION, SUSPECTED_GRASP_LIFT_TIMEOUT]
+sweep:
+  seeds: [6000, 6001]
+  episode_indices: [3, 10, 13, 14]
+  grid:
+    recovery.agent: [none, scripted, llm]
