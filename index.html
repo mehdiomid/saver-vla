@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<title>SAVER-VLA: Agentic Robotics for Failure-Aware Autonomous Manipulation</title>
+<title>SAVER-VLA: Feedback-Driven Agentic Failure Recovery for Vision-Language-Action Manipulation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
@@ -220,6 +220,22 @@ footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; font-family: v
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }
 }
+
+/* Results chart */
+.rchart { margin-top: 1rem; margin-bottom: 1.5rem; }
+.rrow { display: grid; grid-template-columns: 10.5rem 1fr 6.5rem; align-items: center; gap: 0.75rem; margin: 0.45rem 0; font-family: var(--sans); font-size: 0.95rem; }
+.rtrack { position: relative; height: 22px; background: var(--panel); border-radius: 4px; }
+.rfill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--blue); border-radius: 4px; opacity: 0.85; }
+.rfill.rnone { background: var(--seg-policy); }
+.rfill.rllm { background: var(--blue); opacity: 1; }
+.rci { position: absolute; top: 50%; height: 2px; background: var(--ink); transform: translateY(-50%); }
+.rci::before, .rci::after { content: ""; position: absolute; top: -5px; width: 2px; height: 12px; background: var(--ink); }
+.rci::before { left: 0; } .rci::after { right: 0; }
+.rval { font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
+.rchart figcaption { margin-top: 0.75rem; }
+@media (max-width: 560px) { .rrow { grid-template-columns: 1fr; gap: 0.25rem; } }
+pre.codeblock { font-family: var(--mono); font-size: 0.85rem; line-height: 1.55; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 1rem 1.1rem; overflow-x: auto; margin: 0 0 1rem; }
+pre.codeblock code { font-size: inherit; }
 </style>
 </head>
 <body>
@@ -230,7 +246,7 @@ footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; font-family: v
   <p class="authors">Mehdi Omidghane<sup>1</sup>&ensp;&ensp;Nikki Salami<sup>2</sup></p>
   <p class="affil"><sup>1</sup>University of Alberta&ensp;&ensp;<sup>2</sup>Dartmouth College</p>
   <div class="links">
-    <a class="btn" href="paper/saver-vla-corl2026.pdf" target="_blank" rel="noopener">Paper (PDF)</a>
+    <a class="btn" href="paper/saver-vla-corl2026_revised.pdf" target="_blank" rel="noopener">Paper (PDF)</a>
     <a class="btn" href="https://github.com/mehdiomid/saver-vla" target="_blank" rel="noopener">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
        stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -239,6 +255,7 @@ footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; font-family: v
   </svg>
   Code
 </a>
+    <a class="btn" href="#results">Results</a>
     <a class="btn" href="#experiments">Experiment videos</a>
   </div>
 </header>
@@ -261,7 +278,7 @@ footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; font-family: v
       <div class="lab"><b>Agentic SAVER</b><span class="ok">✓ Task completed</span></div>
     </figure>
   </div>
-  <p class="caption teaser-cap">The same injected failure in LIBERO: at step 67 the soup can is pulled out of the gripper during transport. SmolVLA alone does not recover, and restarting its inference after detection is not enough either. With SAVER, a language-model agent selects recovery skills, then hands control back to SmolVLA, which regrasps the can and places it in the basket. Videos play at half the recorded speed.</p>
+  <p class="caption teaser-cap">One episode with a fixed injected failure: at step 67 the soup can is pulled out of the gripper during transport. SmolVLA alone does not recover, and restarting its inference after detection is not enough either. With SAVER-VLA, a language-model agent selects recovery skills, then hands control back to SmolVLA, which regrasps the can and places it in the basket. <strong>Across randomized episodes, SmolVLA alone recovered in 3% and SAVER-VLA in 63–66% (<a href="#results">results</a>).</strong> Videos play at half the recorded speed.</p>
 </section>
 
 <section class="wrap" aria-labelledby="abstract-h">
@@ -269,40 +286,64 @@ footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; font-family: v
   <div class="prose">
     <p>Vision-language-action (VLA) policies map camera images and a language instruction directly to robot actions. When a grasp slips or an object falls, they usually continue as if nothing happened. SAVER-VLA adds a supervisory layer around a pretrained policy, SmolVLA, instead of retraining it. A verifier monitors the manipulation as it runs and raises an event when the observed state diverges from what the task expects, for example when the object stops moving with the gripper.</p>
     <p>Only at that moment does a language-model agent take part. It receives a structured description of the failure, the robot and object geometry, the outcomes of earlier recovery attempts, and the list of skills that are currently executable. It chooses one bounded skill, such as moving to a pregrasp pose, adjusting the grasp offset or handing control back to the policy for a supervised grasp trial. A coordinator validates and executes that choice, verifies the result and returns it to the agent for the next decision.</p>
-    <p>In controlled fault-injection experiments in LIBERO simulation, this loop recovers from forced object displacement and forced gripper release, replans after an unverified grasp attempt, and, in its most recent version, changes the grasp geometry when the evidence points to a misaligned approach rather than a gripper fault. The experiments also show where agentic recovery breaks down: when the agent’s reasoning is sound but its skill library cannot produce the needed physical correction, or when the coordinator silently overrides its decisions. All results are individual simulation episodes with privileged state, intended to establish feasibility and failure modes rather than statistical performance.</p>
+    <p>We evaluate this loop in LIBERO over 256 randomized fault-injection episodes in which every controller faces the same sampled faults. SAVER-VLA raised task success from 3% (SmolVLA alone) to 63–66%, well above simply restarting the policy (27%). A fixed recovery script matched the LLM agent on common faults, but when a recovery attempt failed for a hidden reason the agent outperformed the script (53% vs. 28%, paired p = 0.006). Ablations identify verified outcome feedback as the critical component: without it, success fell from 8/8 to 1/8. The experiments also show where the approach stops working: when an object lands outside the policy’s experience, positioning the robot is not enough, because the policy will not grasp it.</p>
   </div>
 </section>
 
-<section class="wrap" aria-labelledby="trace-h">
-  <h2 id="trace-h">One recovery, decision by decision</h2>
+<section class="wrap" id="results" aria-labelledby="results-h">
+  <h2 id="results-h">Results</h2>
   <div class="prose">
-    <p>The episode below is the hardest scenario we have run. The gripper is forced open during transport, the cause of the fault is hidden from the agent, and the approach skill carries a 5.5&nbsp;cm calibration error along X. The agent (GPT-5.5) makes eight decisions over 740 simulation steps. Select any decision to jump to it in the video, or play the episode and follow along.</p>
-  </div>
+    <p>Every episode samples its own faults (displacement distance and direction, timing, gripper-release length, hidden approach errors) from its seed and initial state, so all controllers face identical faults and can be compared episode by episode. Initial states are ones SmolVLA solves without faults. Success is counted only in episodes where the fault fired, and credited to the agent only after a verified, agent-supervised grasp. Intervals are 95% Wilson confidence intervals; p-values are exact two-sided tests.</p>
 
-  <div class="trace">
-    <div class="player">
-      <video id="tv" src="videos/p6-5-1.mp4" poster="videos/p6-5-1.jpg" muted playsinline preload="auto" controls aria-label="Phase 6.5.1 episode: gripper release with geometry disturbance"></video>
-      <div class="readout">
-        <span class="now" id="now" aria-live="off">Step 0 of 817</span>
-        <div class="ctrls" role="group" aria-label="Playback speed">
-          <button type="button" data-rate="0.5" aria-pressed="false">Slow</button>
-          <button type="button" data-rate="1" aria-pressed="true">Normal</button>
-          <button type="button" data-rate="2" aria-pressed="false">Fast</button>
-        </div>
-      </div>
-      <div class="track" id="track" role="slider" tabindex="0" aria-label="Episode timeline" aria-valuemin="0" aria-valuemax="817" aria-valuenow="0"></div>
-      <div class="legend">
-        <span><i style="background:var(--seg-policy)"></i>SmolVLA in control</span>
-        <span><i style="background:repeating-linear-gradient(135deg,var(--seg-policy) 0 3px,#cfd5dc 3px 6px)"></i>Supervised grasp trial</span>
-        <span><i style="background:var(--blue)"></i>Agent-selected skill</span>
-        <span><i style="background:var(--orange)"></i>Injected fault</span>
-      </div>
-    </div>
-    <ol class="decisions" id="decisions" aria-label="Agent decisions"></ol>
+    <h3>E1. Recovery under randomized faults</h3>
+    <p>Two fault families (separation of 6–18&nbsp;cm in a random direction; gripper release of 10–30 steps), 8 initial states, 2 seeds.</p>
   </div>
+  <figure class="prose rchart" aria-label="Task success under randomized faults">
+    <div class="rrow"><span class="rlabel">SmolVLA alone</span><span class="rtrack"><span class="rfill rnone" style="width:3.3%"></span><span class="rci" style="left:0.6%;width:16.1%"></span></span><span class="rval">1/30 · 3%</span></div>
+    <div class="rrow"><span class="rlabel">Restart policy</span><span class="rtrack"><span class="rfill rnone" style="width:26.7%"></span><span class="rci" style="left:14.2%;width:30.2%"></span></span><span class="rval">8/30 · 27%</span></div>
+    <div class="rrow"><span class="rlabel">SAVER-VLA, script</span><span class="rtrack"><span class="rfill" style="width:63.3%"></span><span class="rci" style="left:45.5%;width:32.2%"></span></span><span class="rval">19/30 · 63%</span></div>
+    <div class="rrow"><span class="rlabel">SAVER-VLA, GPT-5.5</span><span class="rtrack"><span class="rfill rllm" style="width:65.5%"></span><span class="rci" style="left:47.3%;width:32.4%"></span></span><span class="rval">19/29 · 66%</span></div>
+    <figcaption>Task success with 95% confidence intervals (thin lines). Both SAVER-VLA versions beat SmolVLA alone (paired p &lt; 10<sup>−5</sup>) and restarting the policy (p ≈ 0.004). On these common faults the script and the LLM agent do equally well.</figcaption>
+  </figure>
 
-  <div class="prose" style="margin-top:1.75rem">
-    <p>The decisive moment is step 672. The agent is in the same near-grasp pose as at step 200, with the same 5.9&nbsp;cm offset. At step 200 it handed control to the policy because there was not yet any evidence against the standard grasp. By step 672 that evidence exists: the first trial failed with no gripper-command mismatch, so a fault in the gripper does not explain it. The agent applies a negative-X offset, which reduces the offset to 1.3&nbsp;cm, and the second policy trial is verified within 19 steps.</p>
+  <div class="prose">
+    <h3>E2. Where reasoning beats a fixed script</h3>
+    <p>Five hard scenarios, 8 initial states each. Both agents faced the same sampled fault in every episode.</p>
+  </div>
+  <div class="prose tbl-scroll">
+    <table>
+      <thead><tr><th scope="col">Scenario</th><th scope="col">Script</th><th scope="col">GPT-5.5</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">First grasp attempt sabotaged</th><td>0/8</td><td><strong>7/8</strong></td></tr>
+        <tr><th scope="row">Hidden approach error in X and Y</th><td>3/8</td><td>5/8</td></tr>
+        <tr><th scope="row">Random separation, 6–22&nbsp;cm</th><td>4/8</td><td>5/8</td></tr>
+        <tr><th scope="row">Object lost twice</th><td>4/8</td><td>4/8</td></tr>
+        <tr><th scope="row">All faults combined</th><td>0/8</td><td>0/8</td></tr>
+        <tr><th scope="row">All scenarios</th><td>11/40 (28%)</td><td><strong>21/40 (53%)</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>On paired episodes, the agent succeeded where the script failed 11 times, and the reverse happened once (McNemar p = 0.006). The difference comes from failed attempts: the script gives up after a failed grasp, while the agent reads the evidence, diagnoses the cause and retries.</p>
+
+    <h3>E3. Which parts matter</h3>
+    <p>One component removed at a time, on a fault mix that requires replanning (sabotaged first grasp and a hidden approach error); 8 paired episodes per variant.</p>
+  </div>
+  <div class="prose tbl-scroll">
+    <table>
+      <thead><tr><th scope="col">Variant</th><th scope="col">Success</th><th scope="col">vs. full system</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Full system</th><td><strong>8/8</strong></td><td>—</td></tr>
+        <tr><th scope="row">Without verified grasp trials (no outcome feedback)</th><td>1/8</td><td>p = 0.0014</td></tr>
+        <tr><th scope="row">Without information on available skills</th><td>4/8</td><td>trend (p = 0.08)</td></tr>
+        <tr><th scope="row">Without geometry-correction skills</th><td>4/8</td><td>trend (p = 0.08)</td></tr>
+        <tr><th scope="row">Fault type disclosed to the agent</th><td>7/8</td><td>no difference</td></tr>
+        <tr><th scope="row">Scripted agent instead of GPT-5.5</th><td>0/8</td><td>p = 0.0002</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>Closing the loop is what makes the agent useful: without verified outcomes it hands control back once and never learns that the grasp failed. Disclosing the fault does not help, so the agent diagnoses from evidence rather than needing to be told what went wrong.</p>
   </div>
 </section>
 
@@ -407,6 +448,39 @@ footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; font-family: v
   </div>
 </section>
 
+<section class="wrap" aria-labelledby="trace-h">
+  <h2 id="trace-h">One recovery, decision by decision</h2>
+  <div class="prose">
+    <p>The episode below is a worked example of the hard faults evaluated in E2 (see <a href="#results">results</a>). The gripper is forced open during transport, the cause of the fault is hidden from the agent, and the approach skill carries a 5.5&nbsp;cm calibration error along X. The agent (GPT-5.5) makes eight decisions over 740 simulation steps. Select any decision to jump to it in the video, or play the episode and follow along.</p>
+  </div>
+
+  <div class="trace">
+    <div class="player">
+      <video id="tv" src="videos/p6-5-1.mp4" poster="videos/p6-5-1.jpg" muted playsinline preload="auto" controls aria-label="Phase 6.5.1 episode: gripper release with geometry disturbance"></video>
+      <div class="readout">
+        <span class="now" id="now" aria-live="off">Step 0 of 817</span>
+        <div class="ctrls" role="group" aria-label="Playback speed">
+          <button type="button" data-rate="0.5" aria-pressed="false">Slow</button>
+          <button type="button" data-rate="1" aria-pressed="true">Normal</button>
+          <button type="button" data-rate="2" aria-pressed="false">Fast</button>
+        </div>
+      </div>
+      <div class="track" id="track" role="slider" tabindex="0" aria-label="Episode timeline" aria-valuemin="0" aria-valuemax="817" aria-valuenow="0"></div>
+      <div class="legend">
+        <span><i style="background:var(--seg-policy)"></i>SmolVLA in control</span>
+        <span><i style="background:repeating-linear-gradient(135deg,var(--seg-policy) 0 3px,#cfd5dc 3px 6px)"></i>Supervised grasp trial</span>
+        <span><i style="background:var(--blue)"></i>Agent-selected skill</span>
+        <span><i style="background:var(--orange)"></i>Injected fault</span>
+      </div>
+    </div>
+    <ol class="decisions" id="decisions" aria-label="Agent decisions"></ol>
+  </div>
+
+  <div class="prose" style="margin-top:1.75rem">
+    <p>The decisive moment is step 672. The agent is in the same near-grasp pose as at step 200, with the same 5.9&nbsp;cm offset. At step 200 it handed control to the policy because there was not yet any evidence against the standard grasp. By step 672 that evidence exists: the first trial failed with no gripper-command mismatch, so a fault in the gripper does not explain it. The agent applies a negative-X offset, which reduces the offset to 1.3&nbsp;cm, and the second policy trial is verified within 19 steps.</p>
+  </div>
+</section>
+
 <section class="wrap" aria-labelledby="compare-h">
   <h2 id="compare-h">Reasoning quality matters: the same state, two models</h2>
   <div class="prose">
@@ -463,14 +537,49 @@ footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; font-family: v
     </table>
   </div>
   <div class="prose">
-    <p>In both cases the agent’s choice matches the evidence it was given. This is the first sign of the adaptive behavior the project is aiming for. It is still preliminary. There is one episode per condition, and a hand-written rule with access to the same mismatch count could make the same choices. Establishing an advantage over such a rule is the next experiment.</p>
+    <p>In both cases the agent’s choice matches the evidence it was given. The repeated-trial experiments confirm that this matters: after a sabotaged first grasp, the fixed script aborted in 8 of 8 episodes while the agent recovered in 7 of 8, and removing the verified grasp outcomes that make this diagnosis possible cut success from 8/8 to 1/8 (<a href="#results">results</a>).</p>
+  </div>
+</section>
+
+<section class="wrap findings" aria-labelledby="find-h">
+  <h2 id="find-h">What we learned</h2>
+  <div class="prose">
+    <h3>Explicit recovery is necessary; restarting the policy is not enough</h3>
+    <p>Clearing SmolVLA’s action queue makes it re-plan from the current image, but the policy rarely returns to the dropped object: 27% success, against 3% with no intervention. Moving the arm back near the object and then handing control back raised success to 63–66%.</p>
+    <h3>On common faults, a script is as good as the agent</h3>
+    <p>Under randomized separations and gripper releases, the scripted and GPT-5.5 agents both reached 19 successes. An LLM that reproduces a fixed plan adds latency without adding capability. Its value appears when the right next action depends on evidence a script was not written for.</p>
+    <h3>Verified outcome feedback is what makes reasoning useful</h3>
+    <p>When a grasp attempt failed for a hidden reason, the agent recovered in 7 of 8 episodes and the script in none. Removing the verified grasp trials, so that the agent never learns whether a handover worked, reduced success from 8/8 to 1/8. Telling the agent the fault type did not help (7/8): it diagnoses from evidence.</p>
+    <h3>An agent can only be as capable as its skills allow</h3>
+    <p>Removing the geometry-correction skills or the information about which skills are available each halved success (4/8). In the combined-fault scenario, a repositioning skill stalled just short of its targets in 16 of 21 executions; fixing its controller raised that to 12 of 21. Neither problem was a reasoning error.</p>
+    <h3>Positioning is not grasping</h3>
+    <p>The agent positions the robot; the learned policy performs the grasp. When an object lands somewhere the policy has not seen, it approaches briefly and then moves away without grasping, even with the gripper in the right place. This is the main limit of supervising an unchanged policy, and motivates grasp skills the agent can call itself.</p>
+    <h3>Task success is not the same as recovery success</h3>
+    <p>Some episodes succeed only after the agent gives up, because the policy continues on its own. Every episode is labelled, so success is credited to the agent only after a verified, agent-supervised grasp.</p>
+  </div>
+</section>
+
+<section class="wrap" aria-labelledby="lim-h">
+  <h2 id="lim-h">Limitations and next steps</h2>
+  <div class="prose">
+    <p>All results are in simulation, on one LIBERO task, with privileged simulator state: object and end-effector positions come from MuJoCo rather than from cameras. Faults are injected, which keeps them controlled and reproducible but leaves open how the system handles failures that arise naturally. The capability-information and geometry-skill ablations are trends at eight episodes per variant.</p>
+    <p>Under all faults combined, neither agent succeeded (0 of 16), even with the episode limit doubled. Event logs and video localize the failure: after the agent positioned the gripper near the displaced object, SmolVLA did not grasp it. Reasoning also has a cost: GPT-5.5 used 9,000–33,000 tokens and 19–58&nbsp;s of reasoning per episode, during which a real robot must wait safely.</p>
+    <p>Next, we will add grasp skills the agent can call when the policy fails to grasp, replace privileged state with camera-based estimates, evaluate naturally occurring failures, and move to a real SO-101 arm.</p>
+  </div>
+</section>
+
+<section class="wrap" id="code" aria-labelledby="code-h">
+  <h2 id="code-h">Code and reproduction</h2>
+  <div class="prose">
+    <p>The <a href="https://github.com/mehdiomid/saver-vla">saver-vla</a> package runs the recovery layer around an unmodified LeRobot v0.6.1 and SmolVLA. One YAML file defines each experiment; every episode writes its event log, and every sweep a report with confidence intervals and paired statistical tests.</p>
+    <p>Recorded decisions can be replayed exactly, without API calls, and a small test world runs the whole loop in seconds without a GPU. LIBERO experiments need an NVIDIA GPU; the repository includes a Colab notebook.</p>
   </div>
 </section>
 
 <section class="wrap" id="experiments" aria-labelledby="exp-h">
-  <h2 id="exp-h">All experiments</h2>
+  <h2 id="exp-h">Development history</h2>
   <div class="prose">
-    <p>Every recording is LIBERO-Object task 0, “pick up the alphabet soup and place it in the basket,” with an injected fault. For each run we report three outcomes separately, because they often disagree: whether the <strong>agent’s decisions</strong> fit the situation, whether the <strong>recovery skills</strong> reached their targets, and whether LIBERO counted the <strong>task</strong> as completed.</p>
+    <p>These single-episode recordings document how the system was built, phase by phase; the evaluation is in <a href="#results">results</a>. Every recording is LIBERO-Object task 0, “pick up the alphabet soup and place it in the basket,” with an injected fault. For each run we report three outcomes separately, because they often disagree: whether the <strong>agent’s decisions</strong> fit the situation, whether the <strong>recovery skills</strong> reached their targets, and whether LIBERO counted the <strong>task</strong> as completed.</p>
   </div>
 
   <h3 class="phase-h">Phase 3 <span>Baselines and the first recovery skills, no agent</span></h3>
@@ -570,35 +679,10 @@ footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; font-family: v
   </div>
 </section>
 
-<section class="wrap findings" aria-labelledby="find-h">
-  <h2 id="find-h">What we learned</h2>
-  <div class="prose">
-    <h3>Explicit recovery is necessary; restarting the policy is not enough</h3>
-    <p>Clearing SmolVLA’s action queue makes it re-plan from the current image, but the instruction still describes the original task and the policy did not return to the dropped can. Moving the arm back near the object, then handing control back, was what let the learned policy regrasp.</p>
-    <h3>Orchestration alone does not show the value of an agent</h3>
-    <p>Under the first two faults the agent chose the same three-skill sequence a script would, and both succeeded. An LLM that reproduces a fixed plan adds latency without adding capability. The interesting cases are those where the right action depends on evidence a script was not written for.</p>
-    <h3>Feedback and an honest outcome vocabulary drive replanning</h3>
-    <p>Agents replanned well once the coordinator separated “reached the approach pose” from “attempted a grasp and failed,” and reported supervised grasp trials as verified or not. Earlier, a persistent <code>GRASP_LOST</code> flag led GPT-5.2 to recover from failures that had not happened.</p>
-    <h3>An agent can only be as capable as its skills and constraints allow</h3>
-    <p>In 6.4b the agent’s request was sound but invisible attempt limits overrode it; in 6.5 its choice was sound but the skill ended at the wrong height. Neither was a reasoning error. Exposing executable capabilities to the agent, logging requested and executed skills separately, and fixing the skill itself each changed the outcome more than any prompt change did.</p>
-    <h3>Task success is not the same as recovery success</h3>
-    <p>Three runs reached LIBERO success after the agent had given up, because SmolVLA continued on its own. We report agent decisions, skill outcomes and task outcomes separately so that a successful episode is not credited to the agent by default.</p>
-  </div>
-</section>
-
-<section class="wrap" aria-labelledby="lim-h">
-  <h2 id="lim-h">Limitations and next steps</h2>
-  <div class="prose">
-    <p>Each result above is a single episode of a single LIBERO task, so none of them supports a success-rate claim. The verifier and the skills use privileged simulator state (object and end-effector positions, and requested versus executed gripper commands) rather than camera-based perception. Faults are injected, which keeps them controlled and repeatable but leaves open how the system handles failures that arise naturally. Several attempt limits and distance thresholds were set by hand.</p>
-    <p>The next stage is a matched evaluation across fault types and magnitudes and multiple seeds, comparing SmolVLA alone, a scripted recovery baseline that sees the same observations, and the agent, including smaller and faster models. We will measure task success, recovery success conditional on a failure, decision quality, unnecessary interventions, and the cost of reasoning in time and API calls. After that, the privileged state will be replaced with visual estimates.</p>
-  </div>
-</section>
-
-
 </main>
 
 <footer class="wrap">
-  <p>Built on <a href="https://github.com/huggingface/lerobot">LeRobot</a>, SmolVLA and the <a href="https://libero-project.github.io/">LIBERO</a> benchmark. Recovery decisions by OpenAI GPT-5.2 and GPT-5.5.</p>
+  <p>Built on <a href="https://github.com/huggingface/lerobot">LeRobot</a>, SmolVLA and the <a href="https://libero-project.github.io/">LIBERO</a> benchmark. Recovery decisions by OpenAI GPT-5.5 (GPT-5.2 in one comparison).</p>
 </footer>
 
 <script>
